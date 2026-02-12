@@ -94,7 +94,7 @@ The same job runs on Cloud Run with one word changed:
 npx job cloud run stag countdown --seconds 5
 ```
 
-The runner builds a Docker image, pushes it to Artifact Registry, and streams logs back to your terminal. A single image contains all your jobs, so you can run different jobs one after another without rebuilding or redeploying. Only source code changes trigger a new build.
+The runner builds a Docker image, pushes it to Artifact Registry, and streams logs back to your terminal. A single image contains all your jobs, so deployment is separate from choosing which job to run and with what arguments. You can run different jobs one after another without rebuilding or redeploying — only source code changes trigger a new build.
 
 ## Interactive Mode
 
