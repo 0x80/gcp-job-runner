@@ -7,7 +7,7 @@ The job runner discovers available jobs by scanning the filesystem. Jobs are org
 Jobs live in a configurable directory (set via `jobsDirectory` in the runner config). The runner looks for compiled `.mjs` files:
 
 ```
-dist/cli/jobs/
+dist/jobs/
 ├── count-collection.mjs
 ├── hello.mjs
 ├── database/
