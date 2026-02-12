@@ -116,20 +116,6 @@ Log entries are formatted with timestamps and color-coded severity levels:
 
 The `--async` flag skips streaming entirely and exits immediately after starting the execution.
 
-## Isolate Configuration
-
-By default, the runner looks for isolated output in `./isolate`. If you use a custom output path, create `isolate.config.json`:
-
-```json
-{
-  "targetPackagePath": "isolate",
-  "includeDevDependencies": false,
-  "workspacePackages": ["packages/*"]
-}
-```
-
-The `targetPackagePath` tells the runner where to find the isolated package.
-
 ## Cloud Config Options
 
 ```typescript
