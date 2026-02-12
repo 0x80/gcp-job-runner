@@ -8,13 +8,11 @@ Define jobs with Zod schemas, run them locally or on Cloud Run.
 import { z } from "zod";
 import { defineJob } from "gcp-job-runner";
 
-const ArgsSchema = z.object({
-  seconds: z.number().default(10).describe("Number of seconds to count down"),
-});
-
 export default defineJob({
   description: "Count down and exit",
-  schema: ArgsSchema,
+  schema: z.object({
+    seconds: z.number().default(10).describe("Number of seconds to count down"),
+  }),
   handler: async ({ seconds }) => {
     for (let i = seconds; i > 0; i--) {
       console.log(`${i}...`);
