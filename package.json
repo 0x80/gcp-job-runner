@@ -30,6 +30,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "coverage": "vitest run --coverage",
     "clean": "del-cli dist *.tsbuildinfo",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "prepare": "husky && tsdown"
   },
   "dependencies": {
@@ -50,6 +53,7 @@
     "oxlint": "^1.47.0",
     "tsdown": "^0.20.1",
     "typescript": "^5.9.3",
+    "vitepress": "^1.6.4",
     "vitest": "^4.0.18"
   },
   "lint-staged": {
