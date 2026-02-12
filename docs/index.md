@@ -52,7 +52,7 @@ features:
         <circle cx="12" cy="12" r="7"/>
         <circle cx="12" cy="12" r="3"/>
       </svg>
-    title: Monorepo Ready
+    title: Monorepo Support
     details: Workspace dependencies are automatically isolated into a standalone deployable package. No manual bundling or Docker configuration needed.
   - icon: |
       <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
