@@ -6,9 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {
-    clearMocks: true,
-    passWithNoTests: true,
-    exclude: ["**/node_modules/**", "**/dist/**", "**/*.integration.test.*"],
+    include: ["**/*.integration.test.ts"],
+    exclude: ["**/node_modules/**", "**/dist/**"],
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
   },
   resolve: {
     alias: {

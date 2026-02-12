@@ -27,6 +27,7 @@
     "format": "oxfmt",
     "check-format": "oxfmt --check",
     "test": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "coverage": "vitest run --coverage",
     "clean": "del-cli dist *.tsbuildinfo",
     "prepare": "husky && tsdown"
@@ -36,7 +37,7 @@
     "@google-cloud/secret-manager": "^6.1.1",
     "consola": "^3.4.0",
     "execa": "^9.6.1",
-    "isolate-package": "1.27.0-9",
+    "isolate-package": "1.27.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
