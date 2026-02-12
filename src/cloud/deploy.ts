@@ -6,7 +6,6 @@ import { generateDockerfile } from "./dockerfile";
 import {
   checkGcloudAvailable,
   isDockerAvailable,
-  gcloudExec,
   gcloudExecCapture,
   gcloudJson,
   shellExecCapture,
@@ -29,6 +28,17 @@ export interface DeployResult {
   imageBuilt: boolean;
   /** Whether the Cloud Run Job was created or updated */
   jobCreated: boolean;
+}
+
+/**
+ * Filter out noisy gcloud hints from captured output.
+ * Removes "To execute this job" and "Updates are available" blocks.
+ */
+function filterGcloudOutput(output: string): string {
+  return output
+    .replace(/To execute this job.*?gcloud run jobs execute \S+\n?/gs, "")
+    .replace(/Updates are available.*?\$ gcloud components update\n?/gs, "")
+    .trim();
 }
 
 const DEFAULT_REGION = "us-central1";
@@ -355,11 +365,16 @@ async function createOrUpdateJob(
       updateArgs.push(`--service-account=${cloud.serviceAccount}`);
     }
 
-    const success = gcloudExec(updateArgs);
+    const result = gcloudExecCapture(updateArgs);
 
-    if (!success) {
+    if (!result.success) {
       consola.error("Failed to update Cloud Run Job");
       process.exit(1);
+    }
+
+    const filtered = filterGcloudOutput(result.stderr);
+    if (filtered) {
+      process.stderr.write(filtered + "\n");
     }
 
     consola.success(`Cloud Run Job updated: ${cloud.name}`);
@@ -393,11 +408,16 @@ async function createOrUpdateJob(
     createArgs.push(`--service-account=${cloud.serviceAccount}`);
   }
 
-  const success = gcloudExec(createArgs);
+  const result = gcloudExecCapture(createArgs);
 
-  if (!success) {
+  if (!result.success) {
     consola.error("Failed to create Cloud Run Job");
     process.exit(1);
+  }
+
+  const filtered = filterGcloudOutput(result.stderr);
+  if (filtered) {
+    process.stderr.write(filtered + "\n");
   }
 
   consola.success(`Cloud Run Job created: ${cloud.name}`);

@@ -1,13 +1,10 @@
-import {
-  execFileSync,
-  execSync,
-  type ExecSyncOptions,
-} from "node:child_process";
+import { execaCommandSync, execaSync } from "execa";
 import { consola } from "consola";
 
-export interface GcloudResult {
-  stdout: string;
+export interface CapturedExecResult {
   success: boolean;
+  output: string;
+  stderr: string;
 }
 
 /**
@@ -18,15 +15,9 @@ export function gcloudJson<T = unknown>(
   args: string[],
   options?: { ignoreErrors?: boolean },
 ): T | undefined {
-  const fullArgs = [...args, "--format=json"];
-
   try {
-    const stdout = execFileSync("gcloud", fullArgs, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    return JSON.parse(stdout) as T;
+    const result = execaSync("gcloud", [...args, "--format=json"]);
+    return JSON.parse(result.stdout) as T;
   } catch (error) {
     if (options?.ignoreErrors) {
       return undefined;
@@ -43,13 +34,12 @@ export function gcloudExec(
   args: string[],
   options?: { cwd?: string },
 ): boolean {
-  const execOptions: ExecSyncOptions = {
-    stdio: "inherit",
-    ...(options?.cwd && { cwd: options.cwd }),
-  };
-
   try {
-    execFileSync("gcloud", args, execOptions);
+    execaSync("gcloud", args, {
+      stdio: "inherit",
+      cwd: options?.cwd,
+      reject: true,
+    });
     return true;
   } catch {
     return false;
@@ -64,45 +54,39 @@ export function shellExec(
   command: string,
   options?: { cwd?: string },
 ): boolean {
-  const execOptions: ExecSyncOptions = {
-    stdio: "inherit",
-    ...(options?.cwd && { cwd: options.cwd }),
-  };
-
   try {
-    execSync(command, execOptions);
+    execaCommandSync(command, {
+      stdio: "inherit",
+      cwd: options?.cwd,
+      reject: true,
+    });
     return true;
   } catch {
     return false;
   }
 }
 
-export interface CapturedExecResult {
-  success: boolean;
-  output: string;
-}
-
 /**
  * Execute a gcloud command and capture all output instead of streaming it.
- * Returns success status and captured output for the caller to handle.
+ * Returns success status and captured stdout/stderr for the caller to handle.
  */
 export function gcloudExecCapture(
   args: string[],
   options?: { cwd?: string },
 ): CapturedExecResult {
   try {
-    const stdout = execFileSync("gcloud", args, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      ...(options?.cwd && { cwd: options.cwd }),
+    const result = execaSync("gcloud", args, {
+      cwd: options?.cwd,
+      reject: true,
     });
-    return { success: true, output: stdout };
+    return { success: true, output: result.stdout, stderr: result.stderr };
   } catch (error) {
     const stderr = (error as { stderr?: string }).stderr ?? "";
     const stdout = (error as { stdout?: string }).stdout ?? "";
     return {
       success: false,
       output: [stderr, stdout].filter(Boolean).join("\n"),
+      stderr,
     };
   }
 }
@@ -116,18 +100,18 @@ export function shellExecCapture(
   options?: { cwd?: string },
 ): CapturedExecResult {
   try {
-    const stdout = execSync(command, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-      ...(options?.cwd && { cwd: options.cwd }),
+    const result = execaCommandSync(command, {
+      cwd: options?.cwd,
+      reject: true,
     });
-    return { success: true, output: stdout };
+    return { success: true, output: result.stdout, stderr: result.stderr };
   } catch (error) {
     const stderr = (error as { stderr?: string }).stderr ?? "";
     const stdout = (error as { stdout?: string }).stdout ?? "";
     return {
       success: false,
       output: [stderr, stdout].filter(Boolean).join("\n"),
+      stderr,
     };
   }
 }
@@ -137,9 +121,7 @@ export function shellExecCapture(
  */
 export function checkGcloudAvailable(): void {
   try {
-    execFileSync("gcloud", ["--version"], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    execaSync("gcloud", ["--version"]);
   } catch {
     consola.error(
       "gcloud CLI is not installed or not in PATH.\n" +
@@ -154,9 +136,7 @@ export function checkGcloudAvailable(): void {
  */
 export function isDockerAvailable(): boolean {
   try {
-    execFileSync("docker", ["--version"], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    execaSync("docker", ["--version"]);
     return true;
   } catch {
     return false;
