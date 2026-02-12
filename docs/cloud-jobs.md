@@ -17,15 +17,7 @@ No Terraform, Pulumi, or manual GCP configuration needed.
 
 ## Setup
 
-### 1. Install isolate-package
-
-Add `isolate-package` as a dev dependency in your service:
-
-```bash
-pnpm add -D isolate-package
-```
-
-### 2. Configure Cloud Settings
+### 1. Configure Cloud Settings
 
 Add the `cloud` section to your `job-runner.config.ts`:
 
@@ -49,7 +41,7 @@ export default defineRunnerConfig({
 });
 ```
 
-### 3. Add Build Entry for Jobs
+### 2. Add Build Entry for Jobs
 
 Include job files in your tsdown config:
 
@@ -210,4 +202,3 @@ In practice, after the first deploy you can `cloud run` as many different jobs w
 - `gcloud` CLI authenticated with appropriate permissions
 - Artifact Registry repository (default: `cloud-run`)
 - GCP project with Cloud Run and Cloud Build APIs enabled
-- `isolate-package` installed in your service
