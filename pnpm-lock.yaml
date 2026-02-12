@@ -21,8 +21,8 @@ importers:
         specifier: ^9.6.1
         version: 9.6.1
       isolate-package:
-        specifier: 1.27.0-9
-        version: 1.27.0-9
+        specifier: 1.27.0
+        version: 1.27.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -1903,8 +1903,8 @@ packages:
     resolution: {integrity: sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw==}
     engines: {node: '>=20'}
 
-  isolate-package@1.27.0-9:
-    resolution: {integrity: sha512-2XXYIoiMB+dpMqLNcHUQkXo16pEV7QGiFDOBjM8+81qqw0mqHDgs0ZUsc4nU8WpvDeGfEy7QPIKxb+MTYHwCGg==}
+  isolate-package@1.27.0:
+    resolution: {integrity: sha512-YAYzmzkccGNqFUHGAYjrVt0FYEQ3EP0RlJnnQ6qjuFNTRaDwleMsFlxJM4voOPL90S9lblLJCY6KX8uZ7I8hqg==}
     hasBin: true
 
   jackspeak@3.4.3:
@@ -4672,7 +4672,7 @@ snapshots:
 
   isexe@4.0.0: {}
 
-  isolate-package@1.27.0-9:
+  isolate-package@1.27.0:
     dependencies:
       '@npmcli/arborist': 9.3.0
       '@npmcli/config': 10.7.0
