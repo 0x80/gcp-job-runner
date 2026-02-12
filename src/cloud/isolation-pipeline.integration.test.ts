@@ -130,15 +130,8 @@ describe("isolation pipeline", () => {
 
     /** Install dependencies in the workspace */
     await execa("pnpm", ["install"], { cwd: workspaceRoot });
-  }, 120_000);
 
-  afterAll(async () => {
-    if (workspaceRoot) {
-      await rm(workspaceRoot, { recursive: true, force: true });
-    }
-  });
-
-  it("isolation produces valid output", async () => {
+    /** Run isolation so all tests can assert on the output */
     const { isolate } = await import("isolate-package");
 
     const originalCwd = process.cwd();
@@ -148,7 +141,15 @@ describe("isolation pipeline", () => {
     } finally {
       process.chdir(originalCwd);
     }
+  }, 120_000);
 
+  afterAll(async () => {
+    if (workspaceRoot) {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("isolation produces valid output", () => {
     /** Verify isolate output structure */
     expect(existsSync(path.join(isolateDirectory, "package.json"))).toBe(true);
     expect(existsSync(path.join(isolateDirectory, "pnpm-lock.yaml"))).toBe(
@@ -167,7 +168,7 @@ describe("isolation pipeline", () => {
     expect(
       existsSync(path.join(isolateDirectory, "packages/gcp-job-runner")),
     ).toBe(true);
-  }, 60_000);
+  });
 
   it("pnpm install --frozen-lockfile succeeds in isolate output", async () => {
     const result = await execa("pnpm", ["install", "--frozen-lockfile"], {
