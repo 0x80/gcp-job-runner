@@ -10,3 +10,5 @@ coverage
 .env.local.*
 .env*.local
 !.env.example
+docs/.vitepress/cache
+docs/.vitepress/dist
