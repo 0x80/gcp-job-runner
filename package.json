@@ -29,13 +29,13 @@
     "test": "vitest",
     "coverage": "vitest run --coverage",
     "clean": "del-cli dist *.tsbuildinfo",
-    "prepare": "husky"
+    "prepare": "husky && tsdown"
   },
   "dependencies": {
     "@google-cloud/logging": "^11.2.0",
-    "@google-cloud/secret-manager": "^5.6.0",
+    "@google-cloud/secret-manager": "^6.1.1",
     "consola": "^3.4.0",
-    "isolate-package": "1.27.0-8",
+    "isolate-package": "1.27.0-9",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -44,8 +44,8 @@
     "del-cli": "^7.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
-    "oxfmt": "^0.26.0",
-    "oxlint": "^1.41.0",
+    "oxfmt": "^0.32.0",
+    "oxlint": "^1.47.0",
     "tsdown": "^0.20.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
