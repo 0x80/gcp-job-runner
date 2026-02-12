@@ -257,24 +257,17 @@ function getArrayElementType(schema: ZodType): string | null {
 function getBaseType(schema: ZodType): string | null {
   let def = schema._def as ZodDef;
 
-  /** Unwrap ZodEffects (refinements, transforms) */
-  while (getType(def) === "ZodEffects" && def.schema) {
-    def = def.schema._def as ZodDef;
-  }
-
-  /** Unwrap optional */
-  if (getType(def) === "optional" && def.innerType) {
-    def = def.innerType._def as ZodDef;
-  }
-
-  /** Unwrap default */
-  if (getType(def) === "default" && def.innerType) {
-    def = def.innerType._def as ZodDef;
-  }
-
-  /** Unwrap any remaining effects */
-  while (getType(def) === "ZodEffects" && def.schema) {
-    def = def.schema._def as ZodDef;
+  /** Unwrap optional/default/effects in any order until we reach a base type */
+  while (
+    (getType(def) === "optional" ||
+      getType(def) === "default" ||
+      getType(def) === "ZodEffects") &&
+    (def.innerType || def.schema)
+  ) {
+    const inner = def.innerType ?? def.schema;
+    if (inner) {
+      def = inner._def as ZodDef;
+    }
   }
 
   const typeName = getType(def);

@@ -210,6 +210,19 @@ describe("defineJob", () => {
     expect(handler).toHaveBeenCalledWith({ name: "test", verbose: true });
   });
 
+  it("coerces numbers through optional().default() wrappers", async () => {
+    const handler = vi.fn();
+    const job = defineJob({
+      schema: z.object({
+        limit: z.number().optional().default(10),
+      }),
+      handler,
+    });
+
+    await job(["--limit", "42"], "test-job");
+    expect(handler).toHaveBeenCalledWith({ limit: 42 });
+  });
+
   it("converts kebab-case flags to camelCase", async () => {
     const handler = vi.fn();
     const job = defineJob({
