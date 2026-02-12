@@ -56,7 +56,7 @@ npm install gcp-job-runner
 
 ## Documentation
 
-Full documentation is available at the [docs site](https://gcp-job-runner.vercel.app/).
+Full documentation is available at [0x80.github.io/gcp-job-runner](https://0x80.github.io/gcp-job-runner/).
 
 ## License
 
