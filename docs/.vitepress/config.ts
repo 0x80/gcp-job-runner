@@ -4,6 +4,7 @@ export default defineConfig({
   title: "GCP Job Runner",
   description:
     "A schema-driven CLI job runner with Zod validation and auto-generated help",
+  base: "/gcp-job-runner/",
   cleanUrls: true,
   themeConfig: {
     sidebar: [
