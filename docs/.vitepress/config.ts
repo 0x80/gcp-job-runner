@@ -1,7 +1,7 @@
 import { defineConfig } from "vitepress";
 
 export default defineConfig({
-  title: "Job Runner",
+  title: "GCP Job Runner",
   description:
     "A schema-driven CLI job runner with Zod validation and auto-generated help",
   cleanUrls: true,
