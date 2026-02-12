@@ -113,6 +113,8 @@ jobs:
         if: ${{ inputs.dry_run == false }}
         run: |
           npm publish --provenance --tag ${{ steps.version.outputs.dist_tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Push commit and tag
         if: ${{ inputs.dry_run == false }}
