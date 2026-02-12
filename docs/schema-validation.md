@@ -102,7 +102,7 @@ Validation error:
   --limit: Expected number, received nan
 ```
 
-Each line shows the flag name and the Zod error message. The full help text is printed below the errors so the user can see what flags are available.
+Each line shows the schema property name (camelCase, matching the Zod schema) and the error message. The full help text is printed below the errors so the user can see what flags are available.
 
 ## Unwrapping Zod Wrappers
 
