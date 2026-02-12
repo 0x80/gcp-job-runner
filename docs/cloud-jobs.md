@@ -4,11 +4,12 @@ Run jobs in Google Cloud Run Jobs containers.
 
 ## Overview
 
-The runner deploys jobs to Cloud Run using [isolate-package](https://github.com/0x80/isolate-package) to create standalone deployable packages from your monorepo.
+Cloud deployment is designed for monorepos. The runner uses [isolate-package](https://github.com/0x80/isolate-package) to automatically isolate your service with its internal workspace dependencies into a standalone deployable package — no manual bundling required.
 
 The runner handles:
 
-- Generates Dockerfiles automatically
+- Isolates the service and its workspace dependencies automatically
+- Generates Dockerfiles
 - Builds container images with content-based caching
 - Creates and updates Cloud Run Jobs via gcloud
 - Passes arguments and manages execution

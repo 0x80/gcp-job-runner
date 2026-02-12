@@ -52,8 +52,8 @@ features:
         <circle cx="12" cy="12" r="7"/>
         <circle cx="12" cy="12" r="3"/>
       </svg>
-    title: Multi-Environment
-    details: Configure staging, production, and any other environments. Switch with a single argument.
+    title: Monorepo Ready
+    details: Workspace dependencies are automatically isolated into a standalone deployable package. No manual bundling or Docker configuration needed.
   - icon: |
       <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="4 17 10 11 4 5"/>
