@@ -1,18 +1,24 @@
 # Reduce Cold Start Times: Cloud Run Service Mode
 
 > **Status**: Research / not yet implemented. Cloud Run Jobs are typically used
-> for long-running processes, so eliminating a ~2 s cold start may be
+> for long-running processes, so eliminating the ~2 min startup may be
 > over-engineering. This document captures the research and design in case we
 > revisit.
 
 ## Problem
 
-When re-running a Cloud Run Job (without code changes), the "Container
-starting..." phase takes 1-3 seconds every time. Cloud Run Jobs **do not
-support `min-instances`** — every execution spins up a fresh container. The
-only way to keep a container warm between runs is to deploy as a **Cloud Run
-Service** instead, since Services support `min-instances` and naturally keep
-instances warm for ~15 minutes after the last request.
+When re-running a Cloud Run Job (without code changes), the full job startup
+takes approximately **2 minutes**. This includes the entire pipeline: pulling
+the container image, starting the container, installing dependencies, and
+initializing the Node.js runtime. This is distinct from the "container cold
+start" that GCP documentation refers to (typically 1-3 seconds) — the overhead
+we observe is the full job execution startup, which is much longer.
+
+Cloud Run Jobs **do not support `min-instances`** — every execution spins up a
+fresh container and goes through this full startup sequence. The only way to
+keep a container warm between runs is to deploy as a **Cloud Run Service**
+instead, since Services support `min-instances` and naturally keep instances
+warm for ~15 minutes after the last request.
 
 ## Research Findings
 
@@ -30,11 +36,16 @@ instances warm for ~15 minutes after the last request.
 
 ### Cold start times and factors
 
-- Approximately **1-3 seconds** depending on configuration.
-- With startup CPU boost: ~1 second; without: ~3 seconds.
+GCP documentation refers to "cold start" as the container initialization phase
+(~1-3 seconds). However, the full job startup we observe is ~2 minutes, which
+includes image pull, container creation, `pnpm install`, and Node.js module
+loading on top of the container cold start.
+
+- GCP container cold start: ~1-3 seconds (with startup CPU boost: ~1 second).
+- Our observed full job startup: ~2 minutes.
 - Container image size is **independent** of cold start latency.
 - Factors: language/runtime, startup CPU boost, app initialization, number and
-  size of dependencies.
+  size of dependencies, dependency installation.
 
 ### Best practices (general, already applied where possible)
 
