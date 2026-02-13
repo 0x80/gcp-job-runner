@@ -21,6 +21,17 @@ const DEFAULT_REGION = "us-central1";
 /** Delay in ms to wait for log drain after execution completes */
 const LOG_DRAIN_DELAY = 3000;
 
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 /**
  * Execute a Cloud Run Job.
  *
@@ -42,6 +53,8 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   consola.start(
     `Executing Cloud Run Job: ${cloud.name} → ${jobScript}${options.async ? " (async)" : ""}`,
   );
+
+  const executeStart = performance.now();
 
   const args = [
     "run",
@@ -123,6 +136,26 @@ export async function execute(options: ExecuteOptions): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, LOG_DRAIN_DELAY));
 
     await streamer.stop();
+
+    /** Print timing summary */
+    const totalMs = performance.now() - executeStart;
+    const timingParts: string[] = [];
+
+    if (result.startedAt) {
+      timingParts.push(
+        `startup ${formatDuration(result.startedAt - executeStart)}`,
+      );
+    }
+
+    const { startTime, completionTime } = result.execution;
+    if (startTime && completionTime) {
+      const jobMs =
+        new Date(completionTime).getTime() - new Date(startTime).getTime();
+      timingParts.push(`job ${formatDuration(jobMs)}`);
+    }
+
+    timingParts.push(`total ${formatDuration(totalMs)}`);
+    consola.info(`Timing: ${timingParts.join(", ")}`);
 
     if (result.succeeded) {
       consola.success(`Cloud Run Job completed: ${cloud.name}`);
