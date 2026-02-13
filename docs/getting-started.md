@@ -19,13 +19,19 @@ export default defineRunnerConfig({
   environments: {
     stag: defineRunnerEnv({
       project: "my-project-stag",
+      env: { LOG_LEVEL: "debug" },
+      secrets: ["STRIPE_SECRET_KEY"],
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
+      env: { LOG_LEVEL: "info" },
+      secrets: ["STRIPE_SECRET_KEY"],
     }),
   },
 });
 ```
+
+Each environment specifies a GCP project, optional environment variables via `env`, and secret names to load from GCP Secret Manager via `secrets`.
 
 ## Write Your First Job
 
@@ -60,8 +66,9 @@ This will:
 
 1. Build workspace dependencies (shows "Building..." indicator)
 2. Load `job-runner.config.ts`
-3. Set `GOOGLE_CLOUD_PROJECT` to `my-project-stag`
-4. Execute the `countdown` job with `{ seconds: 5 }`
+3. Set `NODE_ENV` to `development` and `GOOGLE_CLOUD_PROJECT` to `my-project-stag`
+4. Apply env vars and load secrets from GCP Secret Manager
+5. Execute the `countdown` job with `{ seconds: 5 }`
 
 ## Get Help
 
@@ -116,6 +123,7 @@ This discovers all compiled `.mjs` files in your jobs directory and lists them.
 
 ## Next Steps
 
+- [Database Migration Example](./migration-example) — A real-world Firestore migration job
 - [Configuration](./configuration) — Full reference for `job-runner.config.ts`
 - [Defining Jobs](./defining-jobs) — Schema options, aliases, examples, and more
 - [CLI Usage](./cli-usage) — All the ways to pass arguments
