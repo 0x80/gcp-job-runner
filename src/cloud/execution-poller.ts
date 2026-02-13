@@ -21,7 +21,7 @@ interface PollOptions {
 interface PollResult {
   succeeded: boolean;
   execution: GcloudExecution;
-  /** Local timestamp (performance.now()) when the container started running */
+  /** Local timestamp (performance.now()) when polling first observed the container running */
   startedAt?: number;
 }
 

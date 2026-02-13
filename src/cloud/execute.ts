@@ -132,16 +132,16 @@ export async function execute(options: ExecuteOptions): Promise<void> {
       onStatusChange: (status) => consola.info(status),
     });
 
+    /** Capture total time before log drain delay */
+    const totalMs = performance.now() - executeStart;
+
     /** Wait for remaining logs to be ingested */
     await new Promise((resolve) => setTimeout(resolve, LOG_DRAIN_DELAY));
 
     await streamer.stop();
-
-    /** Print timing summary */
-    const totalMs = performance.now() - executeStart;
     const timingParts: string[] = [];
 
-    if (result.startedAt) {
+    if (result.startedAt !== undefined) {
       timingParts.push(
         `startup ${formatDuration(result.startedAt - executeStart)}`,
       );
