@@ -1,6 +1,6 @@
 # gcp-job-runner
 
-Define jobs with Zod schemas, run them locally or on Cloud Run.
+Schema-driven Cloud Run jobs for local dev and production.
 
 ## Quick Look
 

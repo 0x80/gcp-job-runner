@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: GCP Job Runner
-  text: Define once, run anywhere
+  text: Focus on the job
   tagline: Schema-driven CLI jobs that run locally during development and on Cloud Run in production. Same code, same secrets, same behavior.
   actions:
     - theme: brand
