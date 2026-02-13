@@ -1,7 +1,7 @@
 {
   "name": "gcp-job-runner",
   "version": "1.0.0",
-  "description": "Run schema-driven Cloud Run jobs seamlessly in all of your environments",
+  "description": "Run schema-driven Cloud Run jobs seamlessly in any environment",
   "license": "MIT",
   "repository": {
     "type": "git",

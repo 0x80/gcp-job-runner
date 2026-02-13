@@ -1,6 +1,6 @@
 # gcp-job-runner
 
-Run schema-driven Cloud Run jobs seamlessly in all of your environments.
+Run schema-driven Cloud Run jobs seamlessly in any environment.
 
 ## Quick Look
 
