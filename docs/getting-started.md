@@ -123,6 +123,7 @@ This discovers all compiled `.mjs` files in your jobs directory and lists them.
 
 ## Next Steps
 
+- [Database Migration Example](./migration-example) — A real-world Firestore migration job
 - [Configuration](./configuration) — Full reference for `job-runner.config.ts`
 - [Defining Jobs](./defining-jobs) — Schema options, aliases, examples, and more
 - [CLI Usage](./cli-usage) — All the ways to pass arguments

@@ -99,3 +99,5 @@ job cloud run stag countdown --seconds 5
 ```
 
 The cloud command builds a Docker image, pushes it to Artifact Registry, and streams logs back to your terminal. Images are cached by content hash — if your code hasn't changed, there's no rebuild, no deploy, straight to execution.
+
+For a more realistic example, see the [database migration example](/migration-example) — a Firestore migration job that demonstrates idempotent updates, pagination, and environment targeting.
