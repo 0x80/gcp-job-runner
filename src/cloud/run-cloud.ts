@@ -13,6 +13,8 @@ import { runJob } from "../run-job";
  * functions at the start of your job handler.
  */
 export async function runJobFromContainer(): Promise<void> {
+  process.env.NODE_ENV ??= "production";
+
   const jobArgv = process.env.JOB_ARGV;
 
   if (jobArgv) {

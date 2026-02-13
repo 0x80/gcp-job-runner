@@ -167,8 +167,11 @@ An array of secret names to load from GCP Secret Manager. The secrets are loaded
 
 When you run `job local run stag my-job --flag value`, the following happens in order:
 
-1. `GOOGLE_CLOUD_PROJECT` is set from `environments.stag.project`
-2. Additional env vars from `environments.stag.env` are set
-3. Secrets from `environments.stag.secrets` are loaded and set as env vars
-4. `initialize()` is called (if defined)
-5. The job handler executes with all env vars available via `process.env`
+1. `NODE_ENV` is set to `development` (if not already set)
+2. `GOOGLE_CLOUD_PROJECT` is set from `environments.stag.project`
+3. Additional env vars from `environments.stag.env` are set
+4. Secrets from `environments.stag.secrets` are loaded and set as env vars
+5. `initialize()` is called (if defined)
+6. The job handler executes with all env vars available via `process.env`
+
+When running in Cloud Run, `NODE_ENV` defaults to `production` instead. In both cases, an explicit `NODE_ENV` (from the shell or from `env` config) takes precedence.

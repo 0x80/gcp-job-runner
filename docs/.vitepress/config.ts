@@ -18,6 +18,10 @@ export default defineConfig({
         ],
       },
       {
+        text: "Examples",
+        items: [{ text: "Database Migration", link: "/migration-example" }],
+      },
+      {
         text: "In Depth",
         items: [
           { text: "Schema & Validation", link: "/schema-validation" },

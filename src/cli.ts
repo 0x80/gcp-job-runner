@@ -198,6 +198,7 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   } = options;
 
   /** Set environment variables for local execution */
+  process.env.NODE_ENV ??= "development";
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
   process.env.USE_CONSOLE_LOG ??= "true";
   process.env.LOG_COLORIZE ??= "true";
