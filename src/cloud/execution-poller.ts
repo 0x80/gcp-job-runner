@@ -73,7 +73,9 @@ export function pollExecution(options: PollOptions): Promise<PollResult> {
             onStatusChange("Running");
           } else if (!hasReportedStarting) {
             hasReportedStarting = true;
-            onStatusChange("Container starting...");
+            onStatusChange(
+              "Container starting... (this can take a few minutes)",
+            );
           }
         }
 
