@@ -1,6 +1,6 @@
 # gcp-job-runner
 
-Schema-driven Cloud Run jobs for local dev and production.
+Run schema-driven Cloud Run jobs seamlessly in all of your environments.
 
 ## Quick Look
 
