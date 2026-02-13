@@ -75,6 +75,7 @@ execution via HTTP POST instead of `gcloud run jobs execute`. The service stays
 warm naturally between requests.
 
 **Trade-offs**:
+
 - Gains `min-instances` support (even `min-instances=0` keeps the container
   warm for ~15 min after the last request).
 - Loses native Cloud Run Jobs features: task tracking, execution naming,
@@ -120,6 +121,7 @@ interface CloudConfig {
 ### Container entrypoint — NEW `src/cloud/run-cloud-service.ts`
 
 Minimal HTTP server using `node:http`:
+
 - `POST /run` — accepts `{ argv: string[], runId: string }`, runs the job,
   returns `{ status: "success" | "error", duration: number, error?: string }`
 - `GET /health` — returns 200 (used by keepalive pings and Cloud Run health
@@ -134,6 +136,7 @@ calling `process.exit()`.
 ### New function: `executeJob()` in `src/run-job.ts`
 
 Extract from `runJob()` a new `executeJob()` that:
+
 - Takes `{ jobsDirectory, jobName, argv }`
 - Imports and runs the job module
 - Returns `{ success: boolean, error?: string }` instead of calling
@@ -144,12 +147,14 @@ Extract from `runJob()` a new `executeJob()` that:
 ### Dockerfile changes (`src/cloud/dockerfile.ts`)
 
 `generateDockerfile()` accepts an optional `mode: 'job' | 'service'` parameter:
+
 - `'job'` (default): current entrypoint — `import 'gcp-job-runner/run-cloud'`
 - `'service'`: new entrypoint — `import 'gcp-job-runner/run-cloud-service'`
 
 ### Deploy changes (`src/cloud/deploy.ts`)
 
 When `keepAlive` is configured:
+
 - `generateDockerfile('service')` instead of `generateDockerfile()`
 - Use `gcloud run services deploy` instead of `gcloud run jobs create/update`
 - Flags: `--no-allow-unauthenticated`, `--min-instances=N`,
@@ -161,6 +166,7 @@ The `createOrUpdateJob()` function gets a sibling `createOrUpdateService()`.
 ### Execute changes (`src/cloud/execute.ts`)
 
 When `keepAlive` is configured:
+
 1. Get service URL: `gcloud run services describe <name> --format='value(status.url)'`
 2. Get identity token: `gcloud auth print-identity-token --audiences=<url>`
 3. Generate a `runId` (crypto.randomUUID)
@@ -173,6 +179,7 @@ When `keepAlive` is configured:
 ### Log streaming changes (`src/cloud/log-streamer.ts`)
 
 Add a second constructor overload / options variant for service mode:
+
 - Filter: `resource.type="cloud_run_revision"` +
   `resource.labels.service_name="<name>"` +
   `jsonPayload.runId="<runId>"`
@@ -181,6 +188,7 @@ Add a second constructor overload / options variant for service mode:
 ### Keepalive command — NEW `src/cloud/keepalive.ts`
 
 `job cloud keepalive <env>` command that:
+
 1. Reads config to get service name, project, region
 2. Gets service URL via `gcloud run services describe`
 3. Gets identity token via `gcloud auth print-identity-token`
@@ -201,18 +209,18 @@ Add: `"./run-cloud-service": "./dist/run-cloud-service.mjs"`
 
 ## Files to modify
 
-| File | Change |
-|------|--------|
-| `src/config.ts` | Add `keepAlive` to `CloudConfig` |
-| `src/run-job.ts` | Extract `executeJob()` from `runJob()` |
-| `src/cloud/run-cloud-service.ts` | **NEW** — HTTP server entrypoint |
-| `src/cloud/keepalive.ts` | **NEW** — keepalive ping command |
-| `src/cloud/dockerfile.ts` | Accept `mode` param for entrypoint |
-| `src/cloud/deploy.ts` | Add `createOrUpdateService()` path |
-| `src/cloud/execute.ts` | Add HTTP execution path |
-| `src/cloud/log-streamer.ts` | Support service resource type filter |
-| `src/cli.ts` | Add keepalive command, wire up keepAlive mode |
-| `package.json` | Add `./run-cloud-service` export |
+| File                             | Change                                        |
+| -------------------------------- | --------------------------------------------- |
+| `src/config.ts`                  | Add `keepAlive` to `CloudConfig`              |
+| `src/run-job.ts`                 | Extract `executeJob()` from `runJob()`        |
+| `src/cloud/run-cloud-service.ts` | **NEW** — HTTP server entrypoint              |
+| `src/cloud/keepalive.ts`         | **NEW** — keepalive ping command              |
+| `src/cloud/dockerfile.ts`        | Accept `mode` param for entrypoint            |
+| `src/cloud/deploy.ts`            | Add `createOrUpdateService()` path            |
+| `src/cloud/execute.ts`           | Add HTTP execution path                       |
+| `src/cloud/log-streamer.ts`      | Support service resource type filter          |
+| `src/cli.ts`                     | Add keepalive command, wire up keepAlive mode |
+| `package.json`                   | Add `./run-cloud-service` export              |
 
 ## Sources
 
