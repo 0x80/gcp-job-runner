@@ -127,7 +127,7 @@ cloud: {
   resources: {
     memory: "1Gi",                // Optional, default: "512Mi"
     cpu: "2",                     // Optional, default: "1"
-    timeout: 7200,                // Optional, default: 86400 (24 hours)
+    timeout: 7200,                // Optional, default: 86400 seconds (24 hours)
   },
 }
 ```
