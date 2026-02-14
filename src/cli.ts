@@ -6,8 +6,13 @@ import process from "node:process";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape } from "zod";
 import type { RunnerConfig } from "./config";
-import { deploy, deployIfChanged } from "./cloud/deploy";
+import {
+  createOrUpdateJob,
+  deployIfChanged,
+  prepareImage,
+} from "./cloud/deploy";
 import { execute } from "./cloud/execute";
+import { deriveJobResourceName } from "./cloud/job-name";
 import { discoverJobs } from "./discover-jobs";
 import { promptForArgs, selectJob } from "./interactive";
 import { runJob } from "./run-job";
@@ -281,7 +286,7 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
 
   const serviceDirectory = process.cwd();
 
-  const { imageUri } = await deploy({
+  const { imageUri } = await prepareImage({
     cloud,
     envConfig,
     serviceDirectory,
@@ -342,7 +347,7 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
     jobArgv = [jobNameFromArgs, ...jobFlags];
   }
 
-  /** Auto-deploy if changed */
+  /** Build and push image if changed */
   const { imageUri } = await deployIfChanged({
     cloud,
     envConfig,
@@ -351,9 +356,25 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
 
   consola.info(`Image: ${imageUri}`);
 
-  /** Execute the Cloud Run Job */
-  await execute({
+  /** Derive per-script Cloud Run Job name */
+  const jobScript = jobArgv[0]!;
+  const jobResourceName = deriveJobResourceName(jobScript);
+  const region = cloud.region ?? "us-central1";
+
+  /** Ensure per-script Cloud Run Job exists with current image */
+  await createOrUpdateJob({
     cloud,
+    envConfig,
+    jobName: jobResourceName,
+    imageUri,
+    region,
+    project: envConfig.project,
+  });
+
+  /** Execute the per-script Cloud Run Job */
+  await execute({
+    jobResourceName,
+    region: cloud.region,
     project: envConfig.project,
     jobArgv,
     async: isAsync,

@@ -1,13 +1,14 @@
 import { consola } from "consola";
-import type { CloudConfig } from "../config";
 import { pollExecution } from "./execution-poller";
 import { gcloudJson } from "./gcloud";
 import { LogStreamer } from "./log-streamer";
 import { parseExecution } from "./types";
 
 interface ExecuteOptions {
-  /** Cloud configuration from the runner config */
-  cloud: CloudConfig;
+  /** Cloud Run Job resource name (e.g., "admin-create-user") */
+  jobResourceName: string;
+  /** GCP region. Default: "us-central1" */
+  region?: string;
   /** GCP project ID */
   project: string;
   /** Job arguments to pass via JOB_ARGV env var */
@@ -32,22 +33,22 @@ const LOG_DRAIN_DELAY = 3000;
  * in real-time while polling for execution completion.
  */
 export async function execute(options: ExecuteOptions): Promise<void> {
-  const { cloud, project, jobArgv } = options;
-  const region = cloud.region ?? DEFAULT_REGION;
+  const { jobResourceName, project, jobArgv } = options;
+  const region = options.region ?? DEFAULT_REGION;
 
   const jobArgvJson = JSON.stringify(jobArgv);
 
   const jobScript = jobArgv[0] ?? "unknown";
 
   consola.start(
-    `Executing Cloud Run Job: ${cloud.name} → ${jobScript}${options.async ? " (async)" : ""}`,
+    `Executing Cloud Run Job: ${jobResourceName} → ${jobScript}${options.async ? " (async)" : ""}`,
   );
 
   const args = [
     "run",
     "jobs",
     "execute",
-    cloud.name,
+    jobResourceName,
     "--project",
     project,
     "--region",
@@ -61,7 +62,7 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   const execution = parseExecution(response, {
     project,
     region,
-    jobName: cloud.name,
+    jobName: jobResourceName,
   });
 
   if (!execution) {
@@ -73,7 +74,7 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   const executionName = execution.name.split("/").pop()!;
 
   if (options.async) {
-    consola.success(`Cloud Run Job started: ${cloud.name}`);
+    consola.success(`Cloud Run Job started: ${jobResourceName}`);
     consola.info(`Execution: ${executionName}`);
     if (execution.logUri) {
       consola.info(`Logs: ${execution.logUri}`);
@@ -89,7 +90,7 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   /** Start log streaming */
   const streamer = new LogStreamer({
     projectId: project,
-    jobName: cloud.name,
+    jobName: jobResourceName,
     executionName,
   });
 
@@ -125,10 +126,10 @@ export async function execute(options: ExecuteOptions): Promise<void> {
     await streamer.stop();
 
     if (result.succeeded) {
-      consola.success(`Cloud Run Job completed: ${cloud.name}`);
+      consola.success(`Cloud Run Job completed: ${jobResourceName}`);
       process.exit(0);
     } else {
-      consola.error(`Cloud Run Job failed: ${cloud.name}`);
+      consola.error(`Cloud Run Job failed: ${jobResourceName}`);
 
       const failedCondition = result.execution.conditions?.find(
         (c) => c.type === "Completed" && c.message,
