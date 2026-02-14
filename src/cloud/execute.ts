@@ -71,20 +71,17 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   }
 
   const executionName = execution.name.split("/").pop()!;
+  const jobPageUrl = `https://console.cloud.google.com/run/jobs/execution/${region}/${executionName}?project=${project}`;
 
   if (options.async) {
     consola.success(`Cloud Run Job started: ${cloud.name}`);
     consola.info(`Execution: ${executionName}`);
-    if (execution.logUri) {
-      consola.info(`Logs: ${execution.logUri}`);
-    }
+    consola.info(`Job page: ${jobPageUrl}`);
     return;
   }
 
   consola.info(`Execution: ${executionName}`);
-  if (execution.logUri) {
-    consola.info(`Logs: ${execution.logUri}`);
-  }
+  consola.info(`Job page: ${jobPageUrl}`);
 
   /** Start log streaming */
   const streamer = new LogStreamer({
@@ -101,9 +98,7 @@ export async function execute(options: ExecuteOptions): Promise<void> {
     consola.info("Stopping log stream...");
     void streamer.stop().then(() => {
       consola.info("Execution continues in the cloud.");
-      if (execution.logUri) {
-        consola.info(`Logs: ${execution.logUri}`);
-      }
+      consola.info(`Job page: ${jobPageUrl}`);
       process.exit(130);
     });
   };
