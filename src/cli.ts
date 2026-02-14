@@ -374,7 +374,7 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
   /** Execute the per-script Cloud Run Job */
   await execute({
     jobResourceName,
-    region: cloud.region,
+    region,
     project: envConfig.project,
     jobArgv,
     async: isAsync,
