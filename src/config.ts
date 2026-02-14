@@ -14,7 +14,7 @@ export interface CloudResources {
   memory?: string;
   /** CPU limit (e.g., "1", "2"). Default: "1" */
   cpu?: string;
-  /** Job timeout in seconds. Default: 3600 */
+  /** Job timeout in seconds. Default: 86400 (24 hours) */
   timeout?: number;
 }
 

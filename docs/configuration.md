@@ -105,7 +105,7 @@ export default defineRunnerConfig({
     resources: {
       memory: "1Gi",
       cpu: "2",
-      timeout: 7200,
+      timeout: 7200, // Optional, default: 86400 (24 hours)
     },
   },
 });

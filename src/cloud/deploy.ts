@@ -304,7 +304,7 @@ async function createOrUpdateJob(
   const { cloud, envConfig, imageUri, region, project } = options;
   const memory = cloud.resources?.memory ?? "512Mi";
   const cpu = cloud.resources?.cpu ?? "1";
-  const timeout = cloud.resources?.timeout ?? 3600;
+  const timeout = cloud.resources?.timeout ?? 86400;
 
   /** Check if job already exists */
   const existingJob = gcloudJson(
