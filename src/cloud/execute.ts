@@ -22,6 +22,10 @@ const DEFAULT_REGION = "us-central1";
 const LOG_DRAIN_DELAY = 3000;
 
 function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) {
+    return "unknown";
+  }
+
   const totalSeconds = Math.round(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
