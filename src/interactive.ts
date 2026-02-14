@@ -29,7 +29,7 @@ async function isJobFile(filePath: string): Promise<boolean> {
  * Returns the job name in "folder/job-name" format.
  *
  * Note: This browses the source directory (src/) not dist/, since the build
- * happens after selection. Files without defineJob are shown but dimmed.
+ * happens after selection. Files without defineJob are filtered out.
  */
 export async function selectJob(jobsDirectory: string): Promise<string> {
   /** Browse source directory instead of dist */
@@ -67,16 +67,10 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
       choices.push({ label: `${folder}/`, value: `folder:${folder}` });
     }
 
-    /** Show job files normally, non-job files are dimmed with a hint */
+    /** Only show files that contain a defineJob call */
     for (const file of fileChecks) {
       if (file.isJob) {
         choices.push({ label: file.name, value: `file:${file.name}` });
-      } else {
-        choices.push({
-          label: file.name,
-          value: `file:${file.name}`,
-          hint: "(not a job)",
-        });
       }
     }
 
@@ -140,15 +134,15 @@ export async function promptForArgs<T extends ZodRawShape>(
  */
 async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
   const flagName = toKebabCase(key);
-  const requiredSuffix = info.isOptional ? "" : " (required)";
+  const optionalPrefix = info.isOptional ? "(optional) " : "";
   const defaultSuffix =
     info.defaultValue !== undefined
-      ? ` [default: ${JSON.stringify(info.defaultValue)}]`
+      ? `  (default: ${JSON.stringify(info.defaultValue)})`
       : "";
 
   const message = info.description
-    ? `--${flagName}${requiredSuffix}${defaultSuffix}\n  ${info.description}`
-    : `--${flagName}${requiredSuffix}${defaultSuffix}`;
+    ? `${optionalPrefix}--${flagName} · ${info.description}${defaultSuffix}`
+    : `${optionalPrefix}--${flagName}${defaultSuffix}`;
 
   /** Handle enum type with select prompt */
   if (
@@ -193,7 +187,10 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
 
   /** Handle array type with text prompt (comma-separated) */
   if (info.typeName === "array") {
-    const arrayMessage = `${message}\n  (comma-separated values)`;
+    const arrayDescription = info.description
+      ? `${info.description}, comma-separated`
+      : "comma-separated values";
+    const arrayMessage = `${optionalPrefix}--${flagName} · ${arrayDescription}${defaultSuffix}`;
     const result = await consola.prompt(arrayMessage, {
       type: "text",
       initial: info.defaultValue
