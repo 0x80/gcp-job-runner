@@ -71,7 +71,7 @@ export async function execute(options: ExecuteOptions): Promise<void> {
   }
 
   const executionName = execution.name.split("/").pop()!;
-  const jobPageUrl = `https://console.cloud.google.com/run/jobs/execution/${region}/${executionName}?project=${project}`;
+  const jobPageUrl = `https://console.cloud.google.com/run/jobs/executions/details/${region}/${cloud.name}/${executionName}?project=${project}`;
 
   if (options.async) {
     consola.success(`Cloud Run Job started: ${cloud.name}`);
