@@ -26,8 +26,6 @@ export interface DeployResult {
   imageUri: string;
   /** Whether a new image was built */
   imageBuilt: boolean;
-  /** Whether the Cloud Run Job was created or updated */
-  jobCreated: boolean;
 }
 
 /**
@@ -73,7 +71,7 @@ function resolveIsolateDirectory(serviceDirectory: string): string {
   return path.join(serviceDirectory, DEFAULT_ISOLATE_PATH);
 }
 
-interface PrepareResult {
+export interface PrepareResult {
   imageUri: string;
   imageBuilt: boolean;
   region: string;
@@ -84,7 +82,9 @@ interface PrepareResult {
  * Shared preparation logic: isolate, hash, check image, build if needed.
  * Used by both deploy() and deployIfChanged().
  */
-async function prepareImage(options: DeployOptions): Promise<PrepareResult> {
+export async function prepareImage(
+  options: DeployOptions,
+): Promise<PrepareResult> {
   const { cloud, envConfig, serviceDirectory } = options;
   const region = cloud.region ?? DEFAULT_REGION;
   const artifactRegistry = cloud.artifactRegistry ?? DEFAULT_ARTIFACT_REGISTRY;
@@ -236,59 +236,39 @@ async function prepareImage(options: DeployOptions): Promise<PrepareResult> {
 }
 
 /**
- * Build and deploy a Cloud Run Job image.
+ * Build and push a Cloud Run Job image.
  *
- * Always creates or updates the Cloud Run Job resource, regardless of whether
- * the image changed. Use deployIfChanged() to skip when unchanged.
+ * This is image-only: it does not create or update Cloud Run Job resources.
+ * Use createOrUpdateJob() separately to manage job resources.
  */
 export async function deploy(options: DeployOptions): Promise<DeployResult> {
-  const { imageUri, imageBuilt, region, project } = await prepareImage(options);
-
-  /** Always create or update the Cloud Run Job */
-  const jobCreated = await createOrUpdateJob({
-    cloud: options.cloud,
-    envConfig: options.envConfig,
-    imageUri,
-    region,
-    project,
-  });
-
-  return { imageUri, imageBuilt, jobCreated };
+  const { imageUri, imageBuilt } = await prepareImage(options);
+  return { imageUri, imageBuilt };
 }
 
 /**
- * Build and conditionally deploy a Cloud Run Job image.
+ * Build and push a Cloud Run Job image only if it has changed.
  *
- * Only creates/updates the Cloud Run Job when the image has changed.
- * When the image already exists, skips both the Docker build and the
- * createOrUpdateJob step.
+ * This is image-only: it does not create or update Cloud Run Job resources.
+ * Use createOrUpdateJob() separately to manage job resources.
  */
 export async function deployIfChanged(
   options: DeployOptions,
 ): Promise<DeployResult> {
-  const { imageUri, imageBuilt, region, project } = await prepareImage(options);
+  const { imageUri, imageBuilt } = await prepareImage(options);
 
   if (!imageBuilt) {
-    consola.info("No changes detected, skipping deploy");
-    return { imageUri, imageBuilt: false, jobCreated: false };
+    consola.info("No changes detected, skipping image build");
   }
 
-  consola.info("Changes detected, deploying...");
-
-  const jobCreated = await createOrUpdateJob({
-    cloud: options.cloud,
-    envConfig: options.envConfig,
-    imageUri,
-    region,
-    project,
-  });
-
-  return { imageUri, imageBuilt, jobCreated };
+  return { imageUri, imageBuilt };
 }
 
-interface CreateOrUpdateJobOptions {
+export interface CreateOrUpdateJobOptions {
   cloud: CloudConfig;
   envConfig: RunnerEnvOptions;
+  /** The Cloud Run Job resource name (e.g., "admin-create-user") */
+  jobName: string;
   imageUri: string;
   region: string;
   project: string;
@@ -298,10 +278,10 @@ interface CreateOrUpdateJobOptions {
  * Create or update a Cloud Run Job resource.
  * Returns true if the job was newly created, false if updated.
  */
-async function createOrUpdateJob(
+export async function createOrUpdateJob(
   options: CreateOrUpdateJobOptions,
 ): Promise<boolean> {
-  const { cloud, envConfig, imageUri, region, project } = options;
+  const { cloud, envConfig, jobName, imageUri, region, project } = options;
   const memory = cloud.resources?.memory ?? "512Mi";
   const cpu = cloud.resources?.cpu ?? "1";
   const timeout = cloud.resources?.timeout ?? 86400;
@@ -312,7 +292,7 @@ async function createOrUpdateJob(
       "run",
       "jobs",
       "describe",
-      cloud.name,
+      jobName,
       "--project",
       project,
       "--region",
@@ -344,7 +324,7 @@ async function createOrUpdateJob(
       "run",
       "jobs",
       "update",
-      cloud.name,
+      jobName,
       "--project",
       project,
       "--region",
@@ -377,7 +357,7 @@ async function createOrUpdateJob(
       process.stderr.write(filtered + "\n");
     }
 
-    consola.success(`Cloud Run Job updated: ${cloud.name}`);
+    consola.success(`Cloud Run Job updated: ${jobName}`);
     return false;
   }
 
@@ -387,7 +367,7 @@ async function createOrUpdateJob(
     "run",
     "jobs",
     "create",
-    cloud.name,
+    jobName,
     "--project",
     project,
     "--region",
@@ -420,7 +400,7 @@ async function createOrUpdateJob(
     process.stderr.write(filtered + "\n");
   }
 
-  consola.success(`Cloud Run Job created: ${cloud.name}`);
+  consola.success(`Cloud Run Job created: ${jobName}`);
   return true;
 }
 
