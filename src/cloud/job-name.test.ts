@@ -38,6 +38,24 @@ describe("deriveJobResourceName", () => {
     expect(deriveJobResourceName("/leading")).toBe("leading");
   });
 
+  it("strips leading digits so the name starts with a letter", () => {
+    expect(deriveJobResourceName("123-migrate")).toBe("migrate");
+    expect(deriveJobResourceName("0task")).toBe("task");
+    expect(deriveJobResourceName("99-bottles-of-beer")).toBe("bottles-of-beer");
+  });
+
+  it("throws when the name becomes empty after sanitization", () => {
+    expect(() => deriveJobResourceName("123")).toThrow(
+      /Cannot derive a valid Cloud Run Job name/,
+    );
+    expect(() => deriveJobResourceName("!!!")).toThrow(
+      /Cannot derive a valid Cloud Run Job name/,
+    );
+    expect(() => deriveJobResourceName("")).toThrow(
+      /Cannot derive a valid Cloud Run Job name/,
+    );
+  });
+
   it("truncates to 63 characters", () => {
     const longName = "a".repeat(100);
     const result = deriveJobResourceName(longName);
