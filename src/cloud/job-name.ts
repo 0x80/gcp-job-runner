@@ -20,6 +20,10 @@ const MAX_JOB_NAME_LENGTH = 63;
  * - Truncate to 63 characters (Cloud Run name limit)
  * - Ensure name doesn't end with a hyphen after truncation
  *
+ * Note: sanitization is lossy, so different script names can produce the same
+ * job name (e.g. `create_user` and `createuser` both become `createuser`).
+ * In practice this requires intentionally confusing naming conventions.
+ *
  * @throws {Error} if the script name produces an empty job name after sanitization
  */
 export function deriveJobResourceName(scriptName: string): string {
