@@ -54,7 +54,7 @@ npm install gcp-job-runner
 
 ## Documentation
 
-Full documentation is available at [0x80.github.io/gcp-job-runner](https://0x80.github.io/gcp-job-runner/).
+Full documentation is available at [gcp-job-runner.codecompose.dev](https://gcp-job-runner.codecompose.dev).
 
 ## License
 

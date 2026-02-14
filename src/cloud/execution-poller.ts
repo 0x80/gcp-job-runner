@@ -21,6 +21,8 @@ interface PollOptions {
 interface PollResult {
   succeeded: boolean;
   execution: GcloudExecution;
+  /** Local timestamp (performance.now()) when polling first observed the container running */
+  startedAt?: number;
 }
 
 const DEFAULT_POLL_INTERVAL = 5000;
@@ -36,6 +38,7 @@ export function pollExecution(options: PollOptions): Promise<PollResult> {
   let consecutiveErrors = 0;
   let hasStarted = false;
   let hasReportedStarting = false;
+  let startedAt: number | undefined;
 
   return new Promise((resolve, reject) => {
     const check = () => {
@@ -67,21 +70,22 @@ export function pollExecution(options: PollOptions): Promise<PollResult> {
           return;
         }
 
-        if (onStatusChange && !hasStarted) {
+        if (!hasStarted) {
           if (execution.startTime) {
             hasStarted = true;
-            onStatusChange("Running");
+            startedAt = performance.now();
+            onStatusChange?.("Running");
           } else if (!hasReportedStarting) {
             hasReportedStarting = true;
-            onStatusChange(
-              "Container starting... (this can take a few minutes)",
+            onStatusChange?.(
+              "Container starting... (this can take about a minute)",
             );
           }
         }
 
         if (execution.completionTime) {
           const succeeded = (execution.succeededCount ?? 0) > 0;
-          resolve({ succeeded, execution });
+          resolve({ succeeded, execution, startedAt });
           return;
         }
 
@@ -90,12 +94,12 @@ export function pollExecution(options: PollOptions): Promise<PollResult> {
         );
 
         if (completedCondition?.state === "CONDITION_SUCCEEDED") {
-          resolve({ succeeded: true, execution });
+          resolve({ succeeded: true, execution, startedAt });
           return;
         }
 
         if (completedCondition?.state === "CONDITION_FAILED") {
-          resolve({ succeeded: false, execution });
+          resolve({ succeeded: false, execution, startedAt });
           return;
         }
 
