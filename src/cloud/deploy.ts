@@ -337,6 +337,10 @@ export async function createOrUpdateJob(
       "--max-retries=0",
     ];
 
+    if (cloud.resources?.parallelism) {
+      updateArgs.push(`--parallelism=${cloud.resources.parallelism}`);
+    }
+
     if (secretsString) {
       updateArgs.push(`--set-secrets=${secretsString}`);
     }
@@ -379,6 +383,10 @@ export async function createOrUpdateJob(
     `--task-timeout=${timeout}s`,
     "--max-retries=0",
   ];
+
+  if (cloud.resources?.parallelism) {
+    createArgs.push(`--parallelism=${cloud.resources.parallelism}`);
+  }
 
   if (secretsString) {
     createArgs.push(`--set-secrets=${secretsString}`);

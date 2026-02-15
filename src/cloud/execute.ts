@@ -15,6 +15,8 @@ interface ExecuteOptions {
   jobArgv: string[];
   /** If true, don't wait for the job to complete */
   async?: boolean;
+  /** Number of tasks to run in parallel. Overrides the job default for this execution. */
+  tasks?: number;
 }
 
 const DEFAULT_REGION = "us-central1";
@@ -51,8 +53,10 @@ export async function execute(options: ExecuteOptions): Promise<void> {
 
   const jobScript = jobArgv[0] ?? "unknown";
 
+  const tasksSuffix = options.tasks ? ` (${options.tasks} tasks)` : "";
+
   consola.start(
-    `Executing Cloud Run Job: ${jobResourceName} → ${jobScript}${options.async ? " (async)" : ""}`,
+    `Executing Cloud Run Job: ${jobResourceName} → ${jobScript}${tasksSuffix}${options.async ? " (async)" : ""}`,
   );
 
   const executeStart = performance.now();
@@ -69,6 +73,10 @@ export async function execute(options: ExecuteOptions): Promise<void> {
     `--update-env-vars=^||^JOB_ARGV=${jobArgvJson}`,
     "--async",
   ];
+
+  if (options.tasks) {
+    args.push(`--tasks=${options.tasks}`);
+  }
 
   const response = gcloudJson(args);
 
