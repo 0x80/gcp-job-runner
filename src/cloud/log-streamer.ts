@@ -15,8 +15,14 @@ interface LogStreamerOptions {
 /** Delay in ms before attempting to reconnect after a stream error */
 const RECONNECT_DELAY = 1000;
 
-/** Stop reconnecting after this many consecutive failures */
+/** Stop reconnecting after this many consecutive short-lived failures */
 const MAX_RECONNECT_ATTEMPTS = 5;
+
+/**
+ * If a stream survives longer than this, its failure is considered transient
+ * (e.g., the 1-hour DEADLINE_EXCEEDED) rather than permanent.
+ */
+const TRANSIENT_FAILURE_THRESHOLD = 60_000;
 
 export class LogStreamer {
   private stream: Duplex | null = null;
@@ -24,6 +30,7 @@ export class LogStreamer {
   private stopped = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private consecutiveFailures = 0;
+  private connectedAt = 0;
 
   constructor(options: LogStreamerOptions) {
     this.options = options;
@@ -54,9 +61,9 @@ export class LogStreamer {
 
     try {
       this.stream = logging.tailEntries({ filter });
+      this.connectedAt = Date.now();
 
       this.stream.on("data", (response) => {
-        this.consecutiveFailures = 0;
         const entries = response.entries ?? [];
         const sorted = [...entries].sort(compareEntryTimestamps);
         for (const entry of sorted) {
@@ -79,6 +86,10 @@ export class LogStreamer {
 
   private scheduleReconnect(): void {
     if (this.stopped || this.reconnectTimer) return;
+
+    if (Date.now() - this.connectedAt > TRANSIENT_FAILURE_THRESHOLD) {
+      this.consecutiveFailures = 0;
+    }
 
     this.consecutiveFailures++;
 
