@@ -12,15 +12,25 @@ interface LogStreamerOptions {
  * Streams Cloud Logging entries to the terminal for a specific Cloud Run Job
  * execution. Uses the Live Tail API for real-time log delivery.
  */
+/** Delay before attempting to reconnect after a stream error */
+const RECONNECT_DELAY = 1000;
+
 export class LogStreamer {
   private stream: Duplex | null = null;
   private options: LogStreamerOptions;
+  private stopped = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: LogStreamerOptions) {
     this.options = options;
   }
 
   start(): void {
+    this.stopped = false;
+    this.connect();
+  }
+
+  private connect(): void {
     const { projectId, jobName, executionName } = this.options;
 
     const logging = new Logging({ projectId });
@@ -45,11 +55,25 @@ export class LogStreamer {
       this.stream.on("error", (error: Error) => {
         consola.warn(`Log stream error: ${error.message}`);
         this.stream = null;
+        this.scheduleReconnect();
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       consola.warn(`Failed to start log streaming: ${message}`);
+      this.scheduleReconnect();
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.stopped) return;
+
+    consola.info("Reconnecting log stream...");
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.stopped) {
+        this.connect();
+      }
+    }, RECONNECT_DELAY);
   }
 
   /**
@@ -57,6 +81,13 @@ export class LogStreamer {
    * fully closed, with a safety timeout to prevent hanging.
    */
   stop(): Promise<void> {
+    this.stopped = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     return new Promise((resolve) => {
       if (!this.stream) {
         resolve();
