@@ -4,7 +4,7 @@ layout: home
 hero:
   name: GCP Job Runner
   text: Focus on the job
-  tagline: Schema-driven CLI jobs that run locally during development and on Cloud Run in production. Same code, same secrets, same behavior.
+  tagline: Run jobs seamlessly on your local machine and on Cloud Run. Simple code, zero boilerplate.
   actions:
     - theme: brand
       text: Get Started
