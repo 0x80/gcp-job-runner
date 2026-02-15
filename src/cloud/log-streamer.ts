@@ -65,7 +65,7 @@ export class LogStreamer {
   }
 
   private scheduleReconnect(): void {
-    if (this.stopped) return;
+    if (this.stopped || this.reconnectTimer) return;
 
     consola.info("Reconnecting log stream...");
     this.reconnectTimer = setTimeout(() => {
