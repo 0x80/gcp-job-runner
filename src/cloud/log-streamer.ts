@@ -66,6 +66,7 @@ export class LogStreamer {
 
       this.stream.on("error", (error: Error) => {
         consola.warn(`Log stream error: ${error.message}`);
+        this.stream?.destroy();
         this.stream = null;
         this.scheduleReconnect();
       });
