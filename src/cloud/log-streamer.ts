@@ -12,7 +12,7 @@ interface LogStreamerOptions {
  * Streams Cloud Logging entries to the terminal for a specific Cloud Run Job
  * execution. Uses the Live Tail API for real-time log delivery.
  */
-/** Delay before attempting to reconnect after a stream error */
+/** Delay in ms before attempting to reconnect after a stream error */
 const RECONNECT_DELAY = 1000;
 
 export class LogStreamer {
