@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 export default defineConfig({
   title: "GCP Job Runner",
   description:
-    "A schema-driven CLI job runner with Zod validation and auto-generated help",
+    "Run jobs seamlessly on your local machine and on Cloud Run. Simple code, zero boilerplate.",
   cleanUrls: true,
   themeConfig: {
     sidebar: [
