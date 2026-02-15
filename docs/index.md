@@ -12,6 +12,9 @@ hero:
     - theme: alt
       text: Cloud Jobs
       link: /cloud-jobs
+    - theme: alt
+      text: GitHub
+      link: https://github.com/0x80/gcp-job-runner
 
 features:
   - icon: |
