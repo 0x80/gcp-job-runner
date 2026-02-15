@@ -12,15 +12,43 @@ interface LogStreamerOptions {
  * Streams Cloud Logging entries to the terminal for a specific Cloud Run Job
  * execution. Uses the Live Tail API for real-time log delivery.
  */
+/** Delay in ms before attempting to reconnect after a stream error */
+const RECONNECT_DELAY = 1000;
+
+/** Stop reconnecting after this many consecutive short-lived failures */
+const MAX_RECONNECT_ATTEMPTS = 5;
+
+/**
+ * If a stream survives longer than this, its failure is considered transient
+ * (e.g., the 1-hour DEADLINE_EXCEEDED) rather than permanent.
+ */
+const TRANSIENT_FAILURE_THRESHOLD = 60_000;
+
 export class LogStreamer {
   private stream: Duplex | null = null;
   private options: LogStreamerOptions;
+  private stopped = false;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private consecutiveFailures = 0;
+  private connectedAt = 0;
 
   constructor(options: LogStreamerOptions) {
     this.options = options;
   }
 
   start(): void {
+    this.stopped = false;
+    this.consecutiveFailures = 0;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    this.connect();
+  }
+
+  private connect(): void {
     const { projectId, jobName, executionName } = this.options;
 
     const logging = new Logging({ projectId });
@@ -33,6 +61,7 @@ export class LogStreamer {
 
     try {
       this.stream = logging.tailEntries({ filter });
+      this.connectedAt = Date.now();
 
       this.stream.on("data", (response) => {
         const entries = response.entries ?? [];
@@ -44,12 +73,38 @@ export class LogStreamer {
 
       this.stream.on("error", (error: Error) => {
         consola.warn(`Log stream error: ${error.message}`);
+        this.stream?.destroy();
         this.stream = null;
+        this.scheduleReconnect();
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       consola.warn(`Failed to start log streaming: ${message}`);
+      this.scheduleReconnect();
     }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.stopped || this.reconnectTimer) return;
+
+    if (Date.now() - this.connectedAt > TRANSIENT_FAILURE_THRESHOLD) {
+      this.consecutiveFailures = 0;
+    }
+
+    this.consecutiveFailures++;
+
+    if (this.consecutiveFailures > MAX_RECONNECT_ATTEMPTS) {
+      consola.warn("Log stream reconnect failed too many times, giving up");
+      return;
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (!this.stopped) {
+        consola.info("Reconnecting log stream...");
+        this.connect();
+      }
+    }, RECONNECT_DELAY);
   }
 
   /**
@@ -57,6 +112,13 @@ export class LogStreamer {
    * fully closed, with a safety timeout to prevent hanging.
    */
   stop(): Promise<void> {
+    this.stopped = true;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     return new Promise((resolve) => {
       if (!this.stream) {
         resolve();
