@@ -27,6 +27,12 @@ export class LogStreamer {
 
   start(): void {
     this.stopped = false;
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     this.connect();
   }
 
