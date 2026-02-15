@@ -15,11 +15,15 @@ interface LogStreamerOptions {
 /** Delay in ms before attempting to reconnect after a stream error */
 const RECONNECT_DELAY = 1000;
 
+/** Stop reconnecting after this many consecutive failures */
+const MAX_RECONNECT_ATTEMPTS = 5;
+
 export class LogStreamer {
   private stream: Duplex | null = null;
   private options: LogStreamerOptions;
   private stopped = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private consecutiveFailures = 0;
 
   constructor(options: LogStreamerOptions) {
     this.options = options;
@@ -27,6 +31,7 @@ export class LogStreamer {
 
   start(): void {
     this.stopped = false;
+    this.consecutiveFailures = 0;
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -51,6 +56,7 @@ export class LogStreamer {
       this.stream = logging.tailEntries({ filter });
 
       this.stream.on("data", (response) => {
+        this.consecutiveFailures = 0;
         const entries = response.entries ?? [];
         const sorted = [...entries].sort(compareEntryTimestamps);
         for (const entry of sorted) {
@@ -72,6 +78,13 @@ export class LogStreamer {
 
   private scheduleReconnect(): void {
     if (this.stopped || this.reconnectTimer) return;
+
+    this.consecutiveFailures++;
+
+    if (this.consecutiveFailures > MAX_RECONNECT_ATTEMPTS) {
+      consola.warn("Log stream reconnect failed too many times, giving up");
+      return;
+    }
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
