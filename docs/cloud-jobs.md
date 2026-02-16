@@ -116,6 +116,65 @@ Log entries are formatted with timestamps and color-coded severity levels:
 
 The `--async` flag skips streaming entirely and exits immediately after starting the execution.
 
+## Parallel Tasks
+
+Cloud Run Jobs can run multiple container instances (tasks) in parallel within a single execution. Each task receives a unique index, allowing you to partition work across containers.
+
+### CLI Flags
+
+```bash
+# Run with 10 parallel tasks
+job cloud run stag process-data --tasks 10
+
+# Run 10 tasks with at most 5 running concurrently
+job cloud run stag process-data --tasks 10 --parallelism 5
+```
+
+- `--tasks N` — Number of tasks for this execution. Each task runs the same container image with its own `CLOUD_RUN_TASK_INDEX`.
+- `--parallelism N` — Maximum number of tasks running concurrently. This sets the job resource default via `gcloud run jobs create/update`. Use `0` for no limit.
+
+You can also set the default parallelism in config:
+
+```typescript
+cloud: {
+  name: "my-service-jobs",
+  resources: {
+    parallelism: 5,
+  },
+},
+```
+
+### Using Task Context in Handlers
+
+Import `getTaskContext()` to read the current task's index and the total count:
+
+```typescript
+import { defineJob, getTaskContext } from "gcp-job-runner";
+
+export default defineJob({
+  description: "Process data in parallel shards",
+  handler: async () => {
+    const { taskIndex, taskCount } = getTaskContext();
+
+    console.log(`Task ${taskIndex + 1} of ${taskCount}`);
+
+    // Partition work based on task index
+    const allItems = await fetchItems();
+    const chunkSize = Math.ceil(allItems.length / taskCount);
+    const chunk = allItems.slice(
+      taskIndex * chunkSize,
+      (taskIndex + 1) * chunkSize,
+    );
+
+    for (const item of chunk) {
+      await processItem(item);
+    }
+  },
+});
+```
+
+`getTaskContext()` returns `{ taskIndex: 0, taskCount: 1 }` when running locally or as a single-task cloud execution, so handlers work without changes in both environments.
+
 ## Cloud Config Options
 
 ```typescript
@@ -128,6 +187,7 @@ cloud: {
     memory: "1Gi",                // Optional, default: "512Mi"
     cpu: "2",                     // Optional, default: "1"
     timeout: 7200,                // Optional, default: 86400 seconds (24 hours)
+    parallelism: 5,               // Optional, max concurrent tasks
   },
 }
 ```
