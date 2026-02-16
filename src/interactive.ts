@@ -59,6 +59,10 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
 
     const choices: Array<{ label: string; value: string; hint?: string }> = [];
 
+    if (currentPath) {
+      choices.push({ label: "..", value: "back", hint: "go back" });
+    }
+
     for (const folder of folders) {
       choices.push({ label: `${folder}/`, value: `folder:${folder}` });
     }
@@ -76,7 +80,7 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
     }
 
     const prompt = currentPath
-      ? `Select a job (in ${currentPath}/) · esc to go back`
+      ? `Select a job (in ${currentPath}/)`
       : "Select a job";
 
     const selection = await consola.prompt(prompt, {
@@ -84,15 +88,15 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
       options: choices,
     });
 
-    /** Escape / Ctrl+C: go back if in subfolder, otherwise exit */
     if (typeof selection === "symbol") {
-      if (currentPath) {
-        currentPath = path.dirname(currentPath);
-        if (currentPath === ".") currentPath = "";
-        continue;
-      }
       consola.info("Cancelled");
       process.exit(0);
+    }
+
+    if (selection === "back") {
+      currentPath = path.dirname(currentPath);
+      if (currentPath === ".") currentPath = "";
+      continue;
     }
 
     if (selection.startsWith("folder:")) {
