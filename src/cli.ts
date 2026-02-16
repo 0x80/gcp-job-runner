@@ -45,12 +45,22 @@ function extractNumberFlag(
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
 
+    let value: number | undefined;
+
     if (arg === flagName && i + 1 < args.length) {
-      return Number(args[i + 1]);
+      value = Number(args[i + 1]);
+    } else if (arg.startsWith(`${flagName}=`)) {
+      value = Number(arg.slice(flagName.length + 1));
     }
 
-    if (arg.startsWith(`${flagName}=`)) {
-      return Number(arg.slice(flagName.length + 1));
+    if (value !== undefined) {
+      if (Number.isNaN(value) || !Number.isInteger(value) || value < 0) {
+        consola.error(
+          `Invalid value for ${flagName}: expected a non-negative integer`,
+        );
+        process.exit(1);
+      }
+      return value;
     }
   }
 
