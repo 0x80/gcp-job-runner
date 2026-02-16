@@ -84,7 +84,8 @@ export function pollExecution(options: PollOptions): Promise<PollResult> {
         }
 
         if (execution.completionTime) {
-          const succeeded = (execution.succeededCount ?? 0) > 0;
+          const failed = (execution.failedCount ?? 0) > 0;
+          const succeeded = !failed && (execution.succeededCount ?? 0) > 0;
           resolve({ succeeded, execution, startedAt });
           return;
         }

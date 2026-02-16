@@ -337,6 +337,12 @@ export async function createOrUpdateJob(
       "--max-retries=0",
     ];
 
+    /**
+     * Always pass --parallelism on update so that removing it from config
+     * resets the deployed value. Default 0 means no concurrency limit.
+     */
+    updateArgs.push(`--parallelism=${cloud.resources?.parallelism ?? 0}`);
+
     if (secretsString) {
       updateArgs.push(`--set-secrets=${secretsString}`);
     }
@@ -379,6 +385,10 @@ export async function createOrUpdateJob(
     `--task-timeout=${timeout}s`,
     "--max-retries=0",
   ];
+
+  if (cloud.resources?.parallelism !== undefined) {
+    createArgs.push(`--parallelism=${cloud.resources.parallelism}`);
+  }
 
   if (secretsString) {
     createArgs.push(`--set-secrets=${secretsString}`);

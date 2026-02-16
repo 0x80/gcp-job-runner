@@ -16,6 +16,8 @@ export interface CloudResources {
   cpu?: string;
   /** Job timeout in seconds. Default: 86400 (24 hours) */
   timeout?: number;
+  /** Maximum number of tasks that can run in parallel. Default: unset (no limit) */
+  parallelism?: number;
 }
 
 /** Configuration for Cloud Run Jobs execution */

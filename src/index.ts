@@ -8,7 +8,9 @@ export {
   schemaToParseArgsOptions,
 } from "./help";
 export type { FieldInfo } from "./help";
+export { getTaskContext } from "./task-context";
 export { runJob } from "./run-job";
+export type { TaskContext } from "./task-context";
 export type {
   CloudConfig,
   CloudResources,
