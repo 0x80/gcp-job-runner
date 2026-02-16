@@ -3,6 +3,7 @@ import process from "node:process";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape } from "zod";
 import { discoverJobs } from "./discover-jobs";
+import { formatDuration } from "./format";
 import { promptForArgs, selectJob } from "./interactive";
 import type { JobFunction, RunJobOptions } from "./types";
 
@@ -90,6 +91,8 @@ export async function runJob(options: RunJobOptions): Promise<void> {
       process.exit(1);
     }
 
+    const start = performance.now();
+
     await (
       fn as (
         argv: string[],
@@ -97,6 +100,8 @@ export async function runJob(options: RunJobOptions): Promise<void> {
         commandPrefix?: string,
       ) => Promise<void>
     )(argv, jobName, options.commandPrefix);
+
+    consola.info(`Completed in ${formatDuration(performance.now() - start)}`);
     process.exit(0);
   } catch (error) {
     const message =
@@ -171,6 +176,8 @@ async function runInteractive(options: RunJobOptions): Promise<void> {
     const argv =
       Object.keys(args).length > 0 ? ["--args", JSON.stringify(args)] : [];
 
+    const start = performance.now();
+
     await (
       fn as (
         argv: string[],
@@ -179,6 +186,7 @@ async function runInteractive(options: RunJobOptions): Promise<void> {
       ) => Promise<void>
     )(argv, jobName, options.commandPrefix);
 
+    consola.info(`Completed in ${formatDuration(performance.now() - start)}`);
     process.exit(0);
   } catch (error) {
     const message =

@@ -1,4 +1,5 @@
 import { consola } from "consola";
+import { formatDuration } from "../format";
 import { pollExecution } from "./execution-poller";
 import { gcloudJson } from "./gcloud";
 import { LogStreamer } from "./log-streamer";
@@ -21,17 +22,6 @@ const DEFAULT_REGION = "us-central1";
 
 /** Delay in ms to wait for log drain after execution completes */
 const LOG_DRAIN_DELAY = 3000;
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.round(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-  return `${seconds}s`;
-}
 
 /**
  * Execute a Cloud Run Job.
