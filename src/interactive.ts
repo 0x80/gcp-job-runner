@@ -60,7 +60,7 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
     const choices: Array<{ label: string; value: string; hint?: string }> = [];
 
     if (currentPath) {
-      choices.push({ label: "..  (back)", value: "back" });
+      choices.push({ label: "..", value: "back", hint: "go back" });
     }
 
     for (const folder of folders) {
@@ -88,7 +88,6 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
       options: choices,
     });
 
-    /** Handle Ctrl+C cancellation */
     if (typeof selection === "symbol") {
       consola.info("Cancelled");
       process.exit(0);
@@ -97,7 +96,10 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
     if (selection === "back") {
       currentPath = path.dirname(currentPath);
       if (currentPath === ".") currentPath = "";
-    } else if (selection.startsWith("folder:")) {
+      continue;
+    }
+
+    if (selection.startsWith("folder:")) {
       const folder = selection.replace("folder:", "");
       currentPath = currentPath ? `${currentPath}/${folder}` : folder;
     } else if (selection.startsWith("file:")) {
@@ -191,35 +193,69 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       ? `${info.description}, comma-separated`
       : "comma-separated values";
     const arrayMessage = `${optionalPrefix}--${flagName} · ${arrayDescription}${defaultSuffix}`;
-    const result = await consola.prompt(arrayMessage, {
-      type: "text",
-      initial: info.defaultValue
-        ? (info.defaultValue as unknown[]).join(", ")
-        : "",
-    });
 
-    if (typeof result === "symbol") {
-      consola.info("Cancelled");
-      process.exit(0);
+    while (true) {
+      const result = await consola.prompt(arrayMessage, {
+        type: "text",
+        initial: info.defaultValue
+          ? (info.defaultValue as unknown[]).join(", ")
+          : "",
+      });
+
+      if (typeof result === "symbol") {
+        consola.info("Cancelled");
+        process.exit(0);
+      }
+
+      if (!result || result.trim() === "") {
+        if (!info.isOptional) {
+          consola.warn("This field is required");
+          continue;
+        }
+        return undefined;
+      }
+
+      return result
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value) => value !== "");
     }
-
-    if (!result || result.trim() === "") {
-      return undefined;
-    }
-
-    return result
-      .split(",")
-      .map((value) => value.trim())
-      .filter((value) => value !== "");
   }
 
   /** Handle number type */
   if (info.typeName === "number") {
     const initialValue =
       typeof info.defaultValue === "number" ? String(info.defaultValue) : "";
+
+    while (true) {
+      const result = await consola.prompt(message, {
+        type: "text",
+        initial: initialValue,
+      });
+
+      if (typeof result === "symbol") {
+        consola.info("Cancelled");
+        process.exit(0);
+      }
+
+      if (!result || result.trim() === "") {
+        if (!info.isOptional) {
+          consola.warn("This field is required");
+          continue;
+        }
+        return undefined;
+      }
+
+      const parsed = Number(result);
+      return Number.isNaN(parsed) ? result : parsed;
+    }
+  }
+
+  /** Default: string type with text prompt */
+  while (true) {
     const result = await consola.prompt(message, {
       type: "text",
-      initial: initialValue,
+      initial: (info.defaultValue as string) ?? "",
     });
 
     if (typeof result === "symbol") {
@@ -228,23 +264,13 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
     }
 
     if (!result || result.trim() === "") {
+      if (!info.isOptional) {
+        consola.warn("This field is required");
+        continue;
+      }
       return undefined;
     }
 
-    const parsed = Number(result);
-    return Number.isNaN(parsed) ? result : parsed;
+    return result;
   }
-
-  /** Default: string type with text prompt */
-  const result = await consola.prompt(message, {
-    type: "text",
-    initial: (info.defaultValue as string) ?? "",
-  });
-
-  if (typeof result === "symbol") {
-    consola.info("Cancelled");
-    process.exit(0);
-  }
-
-  return result || undefined;
 }
