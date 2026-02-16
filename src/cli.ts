@@ -107,8 +107,21 @@ async function main(): Promise<void> {
     return;
   }
 
-  /** Parse positional arguments */
-  const positionals = args.filter((arg) => !arg.startsWith("-"));
+  /**
+   * Parse positional arguments, skipping values consumed by numeric flags
+   * like `--tasks 5` so that `5` is not treated as a positional.
+   */
+  const consumedIndices = new Set<number>();
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]!;
+    if ((arg === "--tasks" || arg === "--parallelism") && i + 1 < args.length) {
+      consumedIndices.add(i + 1);
+    }
+  }
+
+  const positionals = args.filter(
+    (arg, index) => !arg.startsWith("-") && !consumedIndices.has(index),
+  );
 
   const mode = positionals[0];
   if (mode !== "local" && mode !== "cloud") {
@@ -173,20 +186,26 @@ async function main(): Promise<void> {
     "-i",
     "--async",
     "--list",
-    "--tasks",
-    "--parallelism",
   ]);
+
+  /** --tasks and --parallelism are cloud-only; don't strip them in local mode */
+  if (mode === "cloud") {
+    globalFlags.add("--tasks");
+    globalFlags.add("--parallelism");
+  }
 
   const envIndex = args.indexOf(envName);
   const jobFlags = args.slice(envIndex + 1).filter((arg, index, arr) => {
     if (consumedPositionals.has(arg)) return false;
     if (globalFlags.has(arg)) return false;
-    /** Filter out `--flag=value` forms of number flags */
-    if (arg.startsWith("--tasks=") || arg.startsWith("--parallelism="))
-      return false;
-    /** Filter out values that follow --tasks or --parallelism */
-    const previous = arr[index - 1];
-    if (previous === "--tasks" || previous === "--parallelism") return false;
+    if (mode === "cloud") {
+      /** Filter out `--flag=value` forms of number flags */
+      if (arg.startsWith("--tasks=") || arg.startsWith("--parallelism="))
+        return false;
+      /** Filter out values that follow --tasks or --parallelism */
+      const previous = arr[index - 1];
+      if (previous === "--tasks" || previous === "--parallelism") return false;
+    }
     return true;
   });
 
@@ -374,7 +393,7 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
   }
 
   /** Override parallelism from CLI flag */
-  if (parallelism) {
+  if (parallelism !== undefined) {
     cloud.resources = { ...cloud.resources, parallelism };
   }
 

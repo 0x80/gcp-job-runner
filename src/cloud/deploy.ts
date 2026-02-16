@@ -337,7 +337,7 @@ export async function createOrUpdateJob(
       "--max-retries=0",
     ];
 
-    if (cloud.resources?.parallelism) {
+    if (cloud.resources?.parallelism !== undefined) {
       updateArgs.push(`--parallelism=${cloud.resources.parallelism}`);
     }
 
@@ -384,7 +384,7 @@ export async function createOrUpdateJob(
     "--max-retries=0",
   ];
 
-  if (cloud.resources?.parallelism) {
+  if (cloud.resources?.parallelism !== undefined) {
     createArgs.push(`--parallelism=${cloud.resources.parallelism}`);
   }
 
