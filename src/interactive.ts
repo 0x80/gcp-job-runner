@@ -191,35 +191,69 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       ? `${info.description}, comma-separated`
       : "comma-separated values";
     const arrayMessage = `${optionalPrefix}--${flagName} · ${arrayDescription}${defaultSuffix}`;
-    const result = await consola.prompt(arrayMessage, {
-      type: "text",
-      initial: info.defaultValue
-        ? (info.defaultValue as unknown[]).join(", ")
-        : "",
-    });
 
-    if (typeof result === "symbol") {
-      consola.info("Cancelled");
-      process.exit(0);
+    while (true) {
+      const result = await consola.prompt(arrayMessage, {
+        type: "text",
+        initial: info.defaultValue
+          ? (info.defaultValue as unknown[]).join(", ")
+          : "",
+      });
+
+      if (typeof result === "symbol") {
+        consola.info("Cancelled");
+        process.exit(0);
+      }
+
+      if (!result || result.trim() === "") {
+        if (!info.isOptional) {
+          consola.warn("This field is required");
+          continue;
+        }
+        return undefined;
+      }
+
+      return result
+        .split(",")
+        .map((value) => value.trim())
+        .filter((value) => value !== "");
     }
-
-    if (!result || result.trim() === "") {
-      return undefined;
-    }
-
-    return result
-      .split(",")
-      .map((value) => value.trim())
-      .filter((value) => value !== "");
   }
 
   /** Handle number type */
   if (info.typeName === "number") {
     const initialValue =
       typeof info.defaultValue === "number" ? String(info.defaultValue) : "";
+
+    while (true) {
+      const result = await consola.prompt(message, {
+        type: "text",
+        initial: initialValue,
+      });
+
+      if (typeof result === "symbol") {
+        consola.info("Cancelled");
+        process.exit(0);
+      }
+
+      if (!result || result.trim() === "") {
+        if (!info.isOptional) {
+          consola.warn("This field is required");
+          continue;
+        }
+        return undefined;
+      }
+
+      const parsed = Number(result);
+      return Number.isNaN(parsed) ? result : parsed;
+    }
+  }
+
+  /** Default: string type with text prompt */
+  while (true) {
     const result = await consola.prompt(message, {
       type: "text",
-      initial: initialValue,
+      initial: (info.defaultValue as string) ?? "",
     });
 
     if (typeof result === "symbol") {
@@ -227,24 +261,14 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       process.exit(0);
     }
 
-    if (!result || result.trim() === "") {
+    if (!result) {
+      if (!info.isOptional) {
+        consola.warn("This field is required");
+        continue;
+      }
       return undefined;
     }
 
-    const parsed = Number(result);
-    return Number.isNaN(parsed) ? result : parsed;
+    return result;
   }
-
-  /** Default: string type with text prompt */
-  const result = await consola.prompt(message, {
-    type: "text",
-    initial: (info.defaultValue as string) ?? "",
-  });
-
-  if (typeof result === "symbol") {
-    consola.info("Cancelled");
-    process.exit(0);
-  }
-
-  return result || undefined;
 }
