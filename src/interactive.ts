@@ -263,7 +263,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       process.exit(0);
     }
 
-    if (!result) {
+    if (!result || result.trim() === "") {
       if (!info.isOptional) {
         consola.warn("This field is required");
         continue;
