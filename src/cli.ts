@@ -33,6 +33,16 @@ Cloud run options:
   --tasks <n>         Number of parallel tasks for this execution
   --parallelism <n>   Max concurrent tasks (sets job resource default)`;
 
+function validateInteger(value: number, flagName: string): number {
+  if (Number.isNaN(value) || !Number.isInteger(value) || value < 0) {
+    consola.error(
+      `Invalid value for ${flagName}: expected a non-negative integer`,
+    );
+    process.exit(1);
+  }
+  return value;
+}
+
 /**
  * Extract a numeric flag value from args.
  * Supports both `--flag N` and `--flag=N` syntax.
@@ -45,22 +55,17 @@ function extractNumberFlag(
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
 
-    let value: number | undefined;
-
-    if (arg === flagName && i + 1 < args.length) {
-      value = Number(args[i + 1]);
-    } else if (arg.startsWith(`${flagName}=`)) {
-      value = Number(arg.slice(flagName.length + 1));
-    }
-
-    if (value !== undefined) {
-      if (Number.isNaN(value) || !Number.isInteger(value) || value < 0) {
-        consola.error(
-          `Invalid value for ${flagName}: expected a non-negative integer`,
-        );
+    if (arg === flagName) {
+      const next = args[i + 1];
+      if (next === undefined || next.startsWith("-")) {
+        consola.error(`${flagName} requires a value`);
         process.exit(1);
       }
-      return value;
+      return validateInteger(Number(next), flagName);
+    }
+
+    if (arg.startsWith(`${flagName}=`)) {
+      return validateInteger(Number(arg.slice(flagName.length + 1)), flagName);
     }
   }
 
@@ -74,8 +79,19 @@ async function main(): Promise<void> {
   const noBuild = args.includes("--no-build");
   const isInteractive = args.includes("--interactive") || args.includes("-i");
   const isAsync = args.includes("--async");
-  const tasks = extractNumberFlag(args, "--tasks");
-  const parallelism = extractNumberFlag(args, "--parallelism");
+
+  /** Determine mode early so cloud-only flags are only parsed in cloud mode */
+  const mode = args.find((arg) => !arg.startsWith("-"));
+  const isCloudMode = mode === "cloud";
+
+  const tasks = isCloudMode ? extractNumberFlag(args, "--tasks") : undefined;
+  if (tasks === 0) {
+    consola.error("--tasks must be at least 1");
+    process.exit(1);
+  }
+  const parallelism = isCloudMode
+    ? extractNumberFlag(args, "--parallelism")
+    : undefined;
 
   const configPath = path.resolve(process.cwd(), CONFIG_FILE);
 
@@ -118,14 +134,19 @@ async function main(): Promise<void> {
   }
 
   /**
-   * Parse positional arguments, skipping values consumed by numeric flags
-   * like `--tasks 5` so that `5` is not treated as a positional.
+   * Parse positional arguments. In cloud mode, skip values consumed by
+   * numeric flags like `--tasks 5` so that `5` is not treated as a positional.
    */
   const consumedIndices = new Set<number>();
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i]!;
-    if ((arg === "--tasks" || arg === "--parallelism") && i + 1 < args.length) {
-      consumedIndices.add(i + 1);
+  if (isCloudMode) {
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i]!;
+      if (
+        (arg === "--tasks" || arg === "--parallelism") &&
+        i + 1 < args.length
+      ) {
+        consumedIndices.add(i + 1);
+      }
     }
   }
 
@@ -133,7 +154,6 @@ async function main(): Promise<void> {
     (arg, index) => !arg.startsWith("-") && !consumedIndices.has(index),
   );
 
-  const mode = positionals[0];
   if (mode !== "local" && mode !== "cloud") {
     consola.error(
       `Unknown or missing mode "${mode ?? ""}".\n\n` +

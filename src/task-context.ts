@@ -13,8 +13,20 @@ export interface TaskContext {
  * so handlers work identically in local and single-task cloud environments.
  */
 export function getTaskContext(): TaskContext {
-  const taskIndex = Number(process.env.CLOUD_RUN_TASK_INDEX ?? 0);
-  const taskCount = Number(process.env.CLOUD_RUN_TASK_COUNT ?? 1);
+  const taskIndex = parseIntOrDefault(process.env.CLOUD_RUN_TASK_INDEX, 0);
+  const taskCount = Math.max(
+    1,
+    parseIntOrDefault(process.env.CLOUD_RUN_TASK_COUNT, 1),
+  );
 
   return { taskIndex, taskCount };
+}
+
+function parseIntOrDefault(
+  value: string | undefined,
+  fallback: number,
+): number {
+  if (value === undefined || value === "") return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }

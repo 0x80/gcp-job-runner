@@ -53,7 +53,9 @@ export async function execute(options: ExecuteOptions): Promise<void> {
 
   const jobScript = jobArgv[0] ?? "unknown";
 
-  const tasksSuffix = options.tasks ? ` (${options.tasks} tasks)` : "";
+  const tasksSuffix = options.tasks
+    ? ` (${options.tasks} ${options.tasks === 1 ? "task" : "tasks"})`
+    : "";
 
   consola.start(
     `Executing Cloud Run Job: ${jobResourceName} → ${jobScript}${tasksSuffix}${options.async ? " (async)" : ""}`,
