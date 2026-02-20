@@ -104,49 +104,57 @@ export async function prepareImage(
       );
       buildLocal = false;
     } else if (!isDockerDaemonRunning()) {
-      const choice = await consola.prompt(
-        "Docker is installed but the daemon is not running.",
-        {
-          type: "select",
-          options: [
-            {
-              label: "Start Docker",
-              value: "start",
-              hint: "attempt to start the daemon",
-            },
-            {
-              label: "Use Cloud Build",
-              value: "cloud-build",
-              hint: "build remotely instead",
-            },
-          ],
-        },
-      );
+      if (!process.stdin.isTTY) {
+        /** Non-interactive environment (CI) — fall back silently */
+        consola.warn(
+          "Docker daemon is not running, falling back to Cloud Build.",
+        );
+        buildLocal = false;
+      } else {
+        const choice = await consola.prompt(
+          "Docker is installed but the daemon is not running.",
+          {
+            type: "select",
+            options: [
+              {
+                label: "Start Docker",
+                value: "start",
+                hint: "attempt to start the daemon",
+              },
+              {
+                label: "Use Cloud Build",
+                value: "cloud-build",
+                hint: "build remotely instead",
+              },
+            ],
+          },
+        );
 
-      if (typeof choice === "symbol") {
-        process.exit(0);
-      }
+        if (typeof choice === "symbol") {
+          process.exit(0);
+        }
 
-      if (choice === "start") {
-        const started = startDockerDaemon();
+        if (choice === "start") {
+          const started = startDockerDaemon();
 
-        if (!started) {
-          consola.warn(
-            "Could not start Docker automatically, falling back to Cloud Build.",
-          );
-          buildLocal = false;
-        } else {
-          const ready = await waitForDockerDaemon();
-
-          if (!ready) {
+          if (!started) {
             consola.warn(
-              "Docker daemon did not become ready in time, falling back to Cloud Build.",
+              "Could not start Docker automatically, falling back to Cloud Build.",
             );
             buildLocal = false;
+          } else {
+            const ready = await waitForDockerDaemon();
+
+            if (!ready) {
+              consola.warn(
+                "Docker daemon did not become ready in time, falling back to Cloud Build.",
+              );
+              buildLocal = false;
+            }
           }
+        } else {
+          buildLocal = false;
         }
-      } else {
-        buildLocal = false;
       }
     }
   }
