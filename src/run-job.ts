@@ -76,7 +76,7 @@ export async function runJob(options: RunJobOptions): Promise<void> {
     let message = `Job "${jobName}" not found.\n`;
 
     if (matches.length === 1) {
-      message += `\nDid you mean "${matches[0].name}"?\n`;
+      message += `\nDid you mean "${matches[0]!.name}"?\n`;
     } else if (matches.length > 1) {
       message += "\nFound similar jobs:\n";
       for (const match of matches) {
