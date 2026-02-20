@@ -5,7 +5,10 @@ import type { CloudConfig, RunnerEnvOptions } from "../config";
 import { generateDockerfile } from "./dockerfile";
 import {
   checkGcloudAvailable,
-  isDockerAvailable,
+  isDockerInstalled,
+  isDockerDaemonRunning,
+  startDockerDaemon,
+  waitForDockerDaemon,
   gcloudExecCapture,
   gcloudJson,
   shellExecCapture,
@@ -93,12 +96,67 @@ export async function prepareImage(
 
   checkGcloudAvailable();
 
-  if (buildLocal && !isDockerAvailable()) {
-    consola.warn(
-      "Docker is not available, falling back to Cloud Build. " +
-        "Install Docker for faster local builds: https://docs.docker.com/get-docker/",
-    );
-    buildLocal = false;
+  if (buildLocal) {
+    if (!isDockerInstalled()) {
+      consola.warn(
+        "Docker is not installed, falling back to Cloud Build. " +
+          "Install Docker for faster local builds: https://docs.docker.com/get-docker/",
+      );
+      buildLocal = false;
+    } else if (!isDockerDaemonRunning()) {
+      if (!process.stdin.isTTY) {
+        /** Non-interactive environment (CI) — fall back automatically */
+        consola.warn(
+          "Docker daemon is not running, falling back to Cloud Build.",
+        );
+        buildLocal = false;
+      } else {
+        const choice = await consola.prompt(
+          "Docker is installed but the daemon is not running.",
+          {
+            type: "select",
+            options: [
+              {
+                label: "Start Docker",
+                value: "start",
+                hint: "attempt to start the daemon",
+              },
+              {
+                label: "Use Cloud Build",
+                value: "cloud-build",
+                hint: "build remotely instead",
+              },
+            ],
+          },
+        );
+
+        if (typeof choice === "symbol") {
+          process.exit(0);
+        }
+
+        if (choice === "start") {
+          const started = startDockerDaemon();
+
+          if (!started) {
+            consola.warn(
+              "Could not start Docker automatically, falling back to Cloud Build.",
+            );
+            buildLocal = false;
+          } else {
+            const ready = await waitForDockerDaemon();
+
+            if (!ready) {
+              consola.warn(
+                "Docker daemon did not become ready in time, falling back to Cloud Build.",
+              );
+              buildLocal = false;
+            }
+          }
+        } else {
+          buildLocal = false;
+        }
+      }
+    }
   }
 
   /** Step 1: Run isolate to bundle workspace dependencies */

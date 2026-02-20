@@ -1,4 +1,5 @@
 import { execaCommandSync, execaSync } from "execa";
+import { execa } from "execa";
 import { consola } from "consola";
 
 export interface CapturedExecResult {
@@ -132,13 +133,83 @@ export function checkGcloudAvailable(): void {
 }
 
 /**
- * Check if Docker CLI is available.
+ * Check if the Docker CLI binary is installed.
  */
-export function isDockerAvailable(): boolean {
+export function isDockerInstalled(): boolean {
   try {
     execaSync("docker", ["--version"]);
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Check if the Docker daemon is running by executing `docker info`.
+ */
+export function isDockerDaemonRunning(): boolean {
+  try {
+    execaSync("docker", ["info"], { stdio: "pipe" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Attempt to start the Docker daemon.
+ * - macOS: opens the Docker Desktop application
+ * - Linux: starts the docker systemd service
+ * - Other platforms: unsupported, returns false
+ */
+export function startDockerDaemon(): boolean {
+  try {
+    if (process.platform === "darwin") {
+      execaSync("open", ["-a", "Docker"]);
+      return true;
+    }
+
+    if (process.platform === "linux") {
+      execaSync("systemctl", ["start", "docker"]);
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Poll `docker info` until the daemon is responsive or the timeout is reached.
+ * Shows a spinner while waiting.
+ *
+ * @param timeoutMs - Maximum time to wait in milliseconds (default: 30000)
+ * @param intervalMs - Polling interval in milliseconds (default: 2000)
+ * @returns true if the daemon became available, false on timeout
+ */
+export async function waitForDockerDaemon(
+  timeoutMs = 30_000,
+  intervalMs = 2_000,
+): Promise<boolean> {
+  if (isDockerDaemonRunning()) return true;
+
+  consola.start("Waiting for Docker daemon to start...");
+
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+
+    try {
+      await execa("docker", ["info"], { stdio: "pipe" });
+      consola.success("Docker daemon is running");
+      return true;
+    } catch {
+      /** Daemon not ready yet */
+    }
+  }
+
+  consola.fail("Docker daemon did not start in time");
+  return false;
 }
