@@ -4,7 +4,7 @@ layout: home
 hero:
   name: GCP Job Runner
   text: Focus on the job
-  tagline: Run jobs seamlessly on your local machine and on Cloud Run. Simple code, zero boilerplate.
+  tagline: A CLI tool to run scripts locally or on Cloud Run. Simple code, zero boilerplate.
   actions:
     - theme: brand
       text: Get Started
@@ -67,6 +67,8 @@ features:
 ---
 
 ## Quick Look
+
+GCP Job Runner gives you a CLI to define, discover, and execute jobs from your terminal. Write your logic as a simple function, and run it against any environment — locally on your machine or remotely on Cloud Run — with a single command.
 
 Define a job with a Zod schema:
 
