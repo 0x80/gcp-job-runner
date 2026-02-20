@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { consola } from "consola";
@@ -64,6 +65,30 @@ export async function runJob(options: RunJobOptions): Promise<void> {
   const subDirectories = parts;
   const fileLocation = path.join(jobsDirectory, ...subDirectories);
   const modulePath = path.resolve(fileLocation, `${fileName}.mjs`);
+
+  /** Check if the job file exists before attempting to import */
+  if (!existsSync(modulePath)) {
+    const jobs = await discoverJobs(jobsDirectory);
+    const matches = jobs.filter(
+      (job) => job.name.split("/").pop() === fileName,
+    );
+
+    let message = `Job "${jobName}" not found.\n`;
+
+    if (matches.length === 1) {
+      message += `\nDid you mean "${matches[0].name}"?\n`;
+    } else if (matches.length > 1) {
+      message += "\nFound similar jobs:\n";
+      for (const match of matches) {
+        message += `  ${match.name}\n`;
+      }
+    }
+
+    message += "\nRun with --list to see all available jobs.";
+
+    logger.error(message);
+    process.exit(1);
+  }
 
   /** Get argv after the job name (flags to pass to the job) */
   const jobArgvIndex = process.argv.indexOf(jobName);
