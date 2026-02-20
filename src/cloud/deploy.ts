@@ -105,7 +105,7 @@ export async function prepareImage(
       buildLocal = false;
     } else if (!isDockerDaemonRunning()) {
       if (!process.stdin.isTTY) {
-        /** Non-interactive environment (CI) — fall back silently */
+        /** Non-interactive environment (CI) — fall back automatically */
         consola.warn(
           "Docker daemon is not running, falling back to Cloud Build.",
         );
