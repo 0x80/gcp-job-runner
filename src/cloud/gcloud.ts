@@ -210,5 +210,6 @@ export async function waitForDockerDaemon(
     }
   }
 
+  consola.fail("Docker daemon did not start in time");
   return false;
 }
