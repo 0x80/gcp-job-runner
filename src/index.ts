@@ -13,6 +13,7 @@ export { runJob } from "./run-job";
 export type { TaskContext } from "./task-context";
 export type {
   CloudConfig,
+  CloudNetworkConfig,
   CloudResources,
   RunnerConfig,
   RunnerEnvOptions,
