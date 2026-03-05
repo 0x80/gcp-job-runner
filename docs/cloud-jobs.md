@@ -213,11 +213,11 @@ cloud: {
 
 This passes `--network`, `--subnet`, and `--vpc-egress` flags to `gcloud run jobs create/update`, enabling your Cloud Run Job containers to reach private IPs within the VPC.
 
-| Option   | Description                          | Default                  |
-| -------- | ------------------------------------ | ------------------------ |
-| `name`   | VPC network name                     | _(required)_             |
-| `subnet` | VPC subnet name                      | _(not set)_              |
-| `egress` | VPC egress mode                      | `"private-ranges-only"`  |
+| Option   | Description      | Default                 |
+| -------- | ---------------- | ----------------------- |
+| `name`   | VPC network name | _(required)_            |
+| `subnet` | VPC subnet name  | _(not set)_             |
+| `egress` | VPC egress mode  | `"private-ranges-only"` |
 
 The `egress` option controls which traffic is routed through the VPC:
 
