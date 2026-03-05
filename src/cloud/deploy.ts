@@ -409,6 +409,16 @@ export async function createOrUpdateJob(
       updateArgs.push(`--service-account=${cloud.serviceAccount}`);
     }
 
+    if (cloud.network) {
+      updateArgs.push(`--network=${cloud.network.name}`);
+      if (cloud.network.subnet) {
+        updateArgs.push(`--subnet=${cloud.network.subnet}`);
+      }
+      updateArgs.push(
+        `--vpc-egress=${cloud.network.egress ?? "private-ranges-only"}`,
+      );
+    }
+
     const result = gcloudExecCapture(updateArgs);
 
     if (!result.success) {
@@ -454,6 +464,16 @@ export async function createOrUpdateJob(
 
   if (cloud.serviceAccount) {
     createArgs.push(`--service-account=${cloud.serviceAccount}`);
+  }
+
+  if (cloud.network) {
+    createArgs.push(`--network=${cloud.network.name}`);
+    if (cloud.network.subnet) {
+      createArgs.push(`--subnet=${cloud.network.subnet}`);
+    }
+    createArgs.push(
+      `--vpc-egress=${cloud.network.egress ?? "private-ranges-only"}`,
+    );
   }
 
   const result = gcloudExecCapture(createArgs);

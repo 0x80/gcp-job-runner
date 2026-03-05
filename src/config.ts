@@ -20,6 +20,16 @@ export interface CloudResources {
   parallelism?: number;
 }
 
+/** Direct VPC egress configuration for private network access (e.g., Redis) */
+export interface CloudNetworkConfig {
+  /** VPC network name (e.g., "default") */
+  name: string;
+  /** VPC subnet name (e.g., "default") */
+  subnet?: string;
+  /** VPC egress mode. Default: "private-ranges-only" */
+  egress?: "all-traffic" | "private-ranges-only";
+}
+
 /** Configuration for Cloud Run Jobs execution */
 export interface CloudConfig {
   /** Cloud Run Job name (e.g., "loads-predictions-jobs") */
@@ -37,6 +47,8 @@ export interface CloudConfig {
    * Requires Docker to be installed and running. Default: true.
    */
   buildLocal?: boolean;
+  /** Direct VPC egress configuration for private network access */
+  network?: CloudNetworkConfig;
 }
 
 /** Full runner configuration provided by each service */
