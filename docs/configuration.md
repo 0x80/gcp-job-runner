@@ -108,6 +108,10 @@ export default defineRunnerConfig({
       timeout: 7200, // Optional, default: 86400 (24 hours)
       parallelism: 5, // Optional, max concurrent tasks
     },
+    network: {
+      name: "default", // VPC network name
+      subnet: "default", // Optional, VPC subnet name
+    },
   },
 });
 ```

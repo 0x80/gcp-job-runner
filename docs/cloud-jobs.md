@@ -189,8 +189,40 @@ cloud: {
     timeout: 7200,                // Optional, default: 86400 seconds (24 hours)
     parallelism: 5,               // Optional, max concurrent tasks
   },
+  network: {
+    name: "default",              // VPC network name
+    subnet: "default",            // Optional, VPC subnet name
+    egress: "private-ranges-only", // Optional, default: "private-ranges-only"
+  },
 }
 ```
+
+## VPC Network Access
+
+If your jobs need to access resources on a private network (e.g., a Redis instance or internal database), configure Direct VPC egress with the `network` option:
+
+```typescript
+cloud: {
+  name: "my-service-jobs",
+  network: {
+    name: "default",
+    subnet: "default",
+  },
+},
+```
+
+This passes `--network`, `--subnet`, and `--vpc-egress` flags to `gcloud run jobs create/update`, enabling your Cloud Run Job containers to reach private IPs within the VPC.
+
+| Option   | Description      | Default                 |
+| -------- | ---------------- | ----------------------- |
+| `name`   | VPC network name | _(required)_            |
+| `subnet` | VPC subnet name  | _(not set)_             |
+| `egress` | VPC egress mode  | `"private-ranges-only"` |
+
+The `egress` option controls which traffic is routed through the VPC:
+
+- `"private-ranges-only"` — only traffic to private IP ranges (RFC 1918) goes through the VPC
+- `"all-traffic"` — all outbound traffic is routed through the VPC
 
 ## Example Job
 
