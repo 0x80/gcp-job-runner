@@ -17,6 +17,7 @@ import { discoverJobs } from "./discover-jobs";
 import { promptForArgs, selectJob } from "./interactive";
 import { runJob } from "./run-job";
 import { getSecrets } from "./secrets";
+import { parseEnvFiles } from "./env-file";
 import type { JobFunction } from "./types";
 
 const BIN_NAME = "job";
@@ -295,15 +296,24 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
 
   /** Set environment variables for local execution */
   process.env.NODE_ENV ??= "development";
-  process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
   process.env.USE_CONSOLE_LOG ??= "true";
   process.env.LOG_COLORIZE ??= "true";
 
+  /** Load envFile variables (don't overwrite existing process.env values) */
+  const envFileVars = parseEnvFiles(envConfig.envFile);
+  for (const [key, value] of Object.entries(envFileVars)) {
+    process.env[key] ??= value;
+  }
+
+  /** Explicit env values override envFile values */
   if (envConfig.env) {
     for (const [key, value] of Object.entries(envConfig.env)) {
       process.env[key] = value;
     }
   }
+
+  /** Project always takes highest precedence */
+  process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
   if (envConfig.secrets && envConfig.secrets.length > 0) {
     const secrets = await getSecrets(envConfig.secrets);

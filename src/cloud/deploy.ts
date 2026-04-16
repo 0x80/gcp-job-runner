@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { consola } from "consola";
 import type { CloudConfig, RunnerEnvOptions } from "../config";
+import { parseEnvFiles } from "../env-file";
 import { generateDockerfile } from "./dockerfile";
 import {
   checkGcloudAvailable,
@@ -359,10 +360,12 @@ export async function createOrUpdateJob(
     { ignoreErrors: true },
   );
 
-  /** Build environment variables */
+  /** Build environment variables (envFile < env < project) */
+  const envFileVars = parseEnvFiles(envConfig.envFile);
   const envVars: Record<string, string> = {
-    GOOGLE_CLOUD_PROJECT: project,
+    ...envFileVars,
     ...envConfig.env,
+    GOOGLE_CLOUD_PROJECT: project,
   };
 
   const envVarsString = Object.entries(envVars)

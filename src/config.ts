@@ -2,6 +2,12 @@
 export interface RunnerEnvOptions {
   /** GCP project ID — sets GOOGLE_CLOUD_PROJECT automatically */
   project: string;
+  /**
+   * Path(s) to .env files to load, resolved relative to the service directory.
+   * Variables from these files have lower precedence than explicit `env` values.
+   * When multiple files are specified, earlier files take precedence over later ones.
+   */
+  envFile?: string | string[];
   /** Additional environment variables to set before the job runs */
   env?: Record<string, string>;
   /** Secret names to load from GCP Secret Manager */
