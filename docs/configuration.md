@@ -127,11 +127,13 @@ export default defineRunnerConfig({
   environments: {
     stag: defineRunnerEnv({
       project: "my-project-stag",
+      envFile: ".env.stag",
       env: { LOG_LEVEL: "debug" },
       secrets: ["STRIPE_SECRET_KEY"],
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
+      envFile: ".env.prod",
       env: { LOG_LEVEL: "info" },
       secrets: ["STRIPE_SECRET_KEY"],
     }),
@@ -148,6 +150,9 @@ interface RunnerEnvOptions {
   /** GCP project ID — sets GOOGLE_CLOUD_PROJECT automatically */
   project: string;
 
+  /** Path(s) to .env files to load */
+  envFile?: string | string[];
+
   /** Additional environment variables to set before the job runs */
   env?: Record<string, string>;
 
@@ -160,23 +165,58 @@ interface RunnerEnvOptions {
 
 The GCP project ID. This is set as `GOOGLE_CLOUD_PROJECT` before any initialization or job execution happens.
 
+### `envFile`
+
+Path or array of paths to `.env` files, resolved relative to the service directory (where `job-runner.config.ts` lives). This lets you reuse existing `.env` files instead of duplicating variables in the `env` object.
+
+```typescript
+stag: defineRunnerEnv({
+  project: "my-project-stag",
+  envFile: ".env.stag",
+  env: { NODE_ENV: "production" },
+}),
+```
+
+When multiple files are specified, earlier files take precedence (first-wins), matching the dotenv convention. This is useful for layering local overrides on top of shared config:
+
+```typescript
+stag: defineRunnerEnv({
+  project: "my-project-stag",
+  envFile: [".env.local.stag", ".env.stag"],
+}),
+```
+
+The loaded variables are applied in both local execution (`process.env`) and cloud deployments (`--set-env-vars` to gcloud). An error is thrown if a specified file does not exist.
+
 ### `env`
 
-Additional environment variables to set. These are applied after `GOOGLE_CLOUD_PROJECT` but before secrets are loaded.
+Additional environment variables to set. These override any values loaded from `envFile`.
 
 ### `secrets`
 
 An array of secret names to load from GCP Secret Manager. The secrets are loaded identically for both local and cloud execution — the execution environment is transparent.
+
+## Environment Variable Precedence
+
+When multiple sources provide the same variable, the highest-precedence source wins:
+
+1. **`project`** → `GOOGLE_CLOUD_PROJECT` (always wins)
+2. **`env`** values (override envFile and shell)
+3. **Shell environment** / existing `process.env` (local execution only)
+4. **`envFile`** values (don't overwrite existing variables)
+
+This matches the standard dotenv convention where `.env` files never overwrite existing environment variables.
 
 ## Environment Variable Flow
 
 When you run `job local run stag my-job --flag value`, the following happens in order:
 
 1. `NODE_ENV` is set to `development` (if not already set)
-2. `GOOGLE_CLOUD_PROJECT` is set from `environments.stag.project`
-3. Additional env vars from `environments.stag.env` are set
-4. Secrets from `environments.stag.secrets` are loaded and set as env vars
-5. `initialize()` is called (if defined)
-6. The job handler executes with all env vars available via `process.env`
+2. Variables from `envFile` are loaded (without overwriting existing `process.env`)
+3. Additional env vars from `env` are set (overwriting any previous values)
+4. `GOOGLE_CLOUD_PROJECT` is set from `project`
+5. Secrets from `secrets` are loaded and set as env vars
+6. `initialize()` is called (if defined)
+7. The job handler executes with all env vars available via `process.env`
 
 When running in Cloud Run, `NODE_ENV` defaults to `production` instead. In both cases, an explicit `NODE_ENV` (from the shell or from `env` config) takes precedence.
