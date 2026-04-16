@@ -31,7 +31,7 @@ export function parseEnvFiles(
     const parsed = parseEnv(content);
 
     for (const [key, value] of Object.entries(parsed)) {
-      if (value !== undefined && !(key in result)) {
+      if (value !== undefined && !Object.hasOwn(result, key)) {
         result[key] = value;
       }
     }
