@@ -5,7 +5,11 @@ import path from "node:path";
 import process from "node:process";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape } from "zod";
-import { resolveLocalFilesPath, type RunnerConfig } from "./config";
+import {
+  resolveLocalInputFilesPath,
+  resolveLocalOutputFilesPath,
+  type RunnerConfig,
+} from "./config";
 import {
   createOrUpdateJob,
   deployIfChanged,
@@ -316,17 +320,27 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
   /**
-   * `localFilesPath` wins over the environment's `filesPath` for local
-   * runs so developers can use one destination regardless of whether they
-   * point at stag or prod data.
+   * `localInputFilesPath` / `localOutputFilesPath` win over the
+   * environment's `inputFilesPath` / `outputFilesPath` for local runs so
+   * developers can use one destination regardless of whether they point
+   * at stag or prod data.
    */
-  const localFilesPath = resolveLocalFilesPath(
+  const localInputFilesPath = resolveLocalInputFilesPath(
     config,
     envConfig,
     process.cwd(),
   );
-  if (localFilesPath !== undefined) {
-    process.env.JOB_FILES_PATH = localFilesPath;
+  if (localInputFilesPath !== undefined) {
+    process.env.JOB_INPUT_FILES_PATH = localInputFilesPath;
+  }
+
+  const localOutputFilesPath = resolveLocalOutputFilesPath(
+    config,
+    envConfig,
+    process.cwd(),
+  );
+  if (localOutputFilesPath !== undefined) {
+    process.env.JOB_OUTPUT_FILES_PATH = localOutputFilesPath;
   }
 
   if (envConfig.secrets && envConfig.secrets.length > 0) {
@@ -414,15 +428,21 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
 }
 
 /**
- * Reject local filesPath values for cloud commands — they would silently
- * write to a container filesystem that is discarded on task exit.
+ * Reject local inputFilesPath / outputFilesPath values for cloud commands —
+ * they would silently read from or write to a container filesystem that is
+ * discarded on task exit.
  */
 function assertCloudFilesPath(
   envConfig: RunnerConfig["environments"][string],
 ): void {
-  if (envConfig.filesPath && !envConfig.filesPath.startsWith("gs://")) {
+  assertGcsOnly("inputFilesPath", envConfig.inputFilesPath);
+  assertGcsOnly("outputFilesPath", envConfig.outputFilesPath);
+}
+
+function assertGcsOnly(field: string, value: string | undefined): void {
+  if (value && !value.startsWith("gs://")) {
     consola.error(
-      `filesPath "${envConfig.filesPath}" is a local path but this is a cloud command.\n` +
+      `${field} "${value}" is a local path but this is a cloud command.\n` +
         "Use a gs:// URI for cloud environments (e.g. gs://my-bucket/files).",
     );
     process.exit(1);

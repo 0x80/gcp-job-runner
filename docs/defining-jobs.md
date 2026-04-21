@@ -261,7 +261,7 @@ export default defineJob({
 
 ## File I/O
 
-Jobs that produce or consume files (reports, exports, fixtures, prior outputs) can use `getFileWriter()` to write JSON, CSV, or binary content and `getFilesPath()` to locate files for reading. The destination is configured per environment — a local directory during development, a Cloud Storage bucket in production.
+Jobs that produce or consume files (reports, exports, fixtures, prior outputs) can use `getFileWriter()` to write JSON, CSV, or binary content to the configured output destination, and `getInputFilesPath()` to locate files for reading. Destinations are configured per environment — local directories during development, Cloud Storage buckets in production.
 
 ```typescript
 import { defineJob, getFileWriter } from "gcp-job-runner";

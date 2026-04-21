@@ -87,13 +87,15 @@ export default defineRunnerConfig({
       project: "my-project-stag",
       env: { LOG_LEVEL: "debug" },
       secrets: ["STRIPE_SECRET_KEY", "SENDGRID_API_KEY"],
-      filesPath: "gs://my-project-stag-files",
+      inputFilesPath: "gs://my-project-stag-input",
+      outputFilesPath: "gs://my-project-stag-output",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
       env: { LOG_LEVEL: "info" },
       secrets: ["STRIPE_SECRET_KEY", "SENDGRID_API_KEY"],
-      filesPath: "gs://my-project-prod-files",
+      inputFilesPath: "gs://my-project-prod-input",
+      outputFilesPath: "gs://my-project-prod-output",
     }),
   },
   cloud: {
@@ -102,7 +104,7 @@ export default defineRunnerConfig({
 });
 ```
 
-`filesPath` is optional and only needed if your jobs call [`getFileWriter()`](./files) or [`getFilesPath()`](./files) to read or write files. For a local-only environment, use a relative path such as `"./files"` instead of a bucket URI.
+`inputFilesPath` and `outputFilesPath` are both optional and only needed if your jobs call [`getInputFilesPath()`](./files) or [`getFileWriter()` / `getOutputFilesPath()`](./files). For a local-only environment, use relative paths such as `"./input"` / `"./output"` instead of bucket URIs.
 
 ## Secrets
 

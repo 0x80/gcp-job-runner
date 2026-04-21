@@ -4,10 +4,11 @@ import { consola } from "consola";
 import type { Storage } from "@google-cloud/storage";
 
 /**
- * Writer for job files, produced by `getFileWriter()`. A single writer
- * instance targets a destination configured via the `filesPath` runner
- * option (local directory or `gs://` URI). All methods return the resolved
- * absolute path or `gs://` URI of the written file.
+ * Writer for job output files, produced by `getFileWriter()`. A single
+ * writer instance targets the destination configured via the
+ * `outputFilesPath` runner option (local directory or `gs://` URI). All
+ * methods return the resolved absolute path or `gs://` URI of the written
+ * file.
  */
 export interface FileWriter {
   /**
@@ -27,31 +28,41 @@ export interface FileWriter {
 const GCS_PREFIX = "gs://";
 
 /**
- * Return the resolved destination for files written via `getFileWriter()`.
+ * Return the resolved input files destination — where the job reads from.
  * Local paths are resolved to an absolute filesystem path; `gs://` URIs
- * pass through unchanged. Scripts that need to read from the same
- * destination — fixtures, prior outputs, input datasets — can use this
- * to locate existing files and read them with `node:fs` or
+ * pass through unchanged. Use this to locate fixtures, reference datasets,
+ * or files produced by another job, and read them with `node:fs` or
  * `@google-cloud/storage` directly.
  *
- * Throws when no destination is configured.
+ * Throws when no input destination is configured.
  */
-export function getFilesPath(): string {
-  const destination = readDestination();
-  return destination.startsWith(GCS_PREFIX)
-    ? destination
-    : path.resolve(destination);
+export function getInputFilesPath(): string {
+  return resolveDestination(readInputDestination());
+}
+
+/**
+ * Return the resolved output files destination — where `getFileWriter()`
+ * writes to. Local paths are resolved to an absolute filesystem path;
+ * `gs://` URIs pass through unchanged. Useful when a job needs to read
+ * back its own artifacts (e.g., to chain steps within a handler) or pass
+ * the destination to another tool.
+ *
+ * Throws when no output destination is configured.
+ */
+export function getOutputFilesPath(): string {
+  return resolveDestination(readOutputDestination());
 }
 
 /**
  * Return a writer that persists files to the destination configured via
- * the `filesPath` runner option. Local paths are used for local execution;
- * `gs://bucket[/prefix]` URIs are used for Cloud Run deployments.
+ * the `outputFilesPath` runner option. Local paths are used for local
+ * execution; `gs://bucket[/prefix]` URIs are used for Cloud Run
+ * deployments.
  *
- * Throws when no destination is configured.
+ * Throws when no output destination is configured.
  */
 export function getFileWriter(): FileWriter {
-  const destination = readDestination();
+  const destination = readOutputDestination();
 
   if (destination.startsWith(GCS_PREFIX)) {
     return createGcsWriter(destination);
@@ -60,15 +71,36 @@ export function getFileWriter(): FileWriter {
   return createLocalWriter(destination);
 }
 
-function readDestination(): string {
-  const destination = process.env.JOB_FILES_PATH;
+function resolveDestination(destination: string): string {
+  return destination.startsWith(GCS_PREFIX)
+    ? destination
+    : path.resolve(destination);
+}
+
+function readInputDestination(): string {
+  const destination = process.env.JOB_INPUT_FILES_PATH;
 
   if (!destination) {
     throw new Error(
-      "No files destination configured.\n" +
-        "Set `localFilesPath` or the current environment's `filesPath` " +
-        "in your job-runner.config.ts, or set JOB_FILES_PATH directly in " +
-        "the environment.",
+      "No input files destination configured.\n" +
+        "Set `localInputFilesPath` or the current environment's " +
+        "`inputFilesPath` in your job-runner.config.ts, or set " +
+        "JOB_INPUT_FILES_PATH directly in the environment.",
+    );
+  }
+
+  return destination;
+}
+
+function readOutputDestination(): string {
+  const destination = process.env.JOB_OUTPUT_FILES_PATH;
+
+  if (!destination) {
+    throw new Error(
+      "No output files destination configured.\n" +
+        "Set `localOutputFilesPath` or the current environment's " +
+        "`outputFilesPath` in your job-runner.config.ts, or set " +
+        "JOB_OUTPUT_FILES_PATH directly in the environment.",
     );
   }
 

@@ -3,52 +3,36 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { consola } from "consola";
-import { getFilesPath, getFileWriter } from "./files";
+import { getFileWriter, getInputFilesPath, getOutputFilesPath } from "./files";
 
 describe("getFileWriter", () => {
   let tempDir: string;
-  const originalFilesPath = process.env.JOB_FILES_PATH;
+  const originalOutputPath = process.env.JOB_OUTPUT_FILES_PATH;
 
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), "files-test-"));
-    process.env.JOB_FILES_PATH = tempDir;
+    process.env.JOB_OUTPUT_FILES_PATH = tempDir;
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
-    if (originalFilesPath === undefined) {
-      delete process.env.JOB_FILES_PATH;
+    if (originalOutputPath === undefined) {
+      delete process.env.JOB_OUTPUT_FILES_PATH;
     } else {
-      process.env.JOB_FILES_PATH = originalFilesPath;
+      process.env.JOB_OUTPUT_FILES_PATH = originalOutputPath;
     }
     vi.restoreAllMocks();
   });
 
   describe("configuration", () => {
-    it("throws when JOB_FILES_PATH is unset", () => {
-      delete process.env.JOB_FILES_PATH;
-      expect(() => getFileWriter()).toThrowError(/filesPath/);
+    it("throws when JOB_OUTPUT_FILES_PATH is unset", () => {
+      delete process.env.JOB_OUTPUT_FILES_PATH;
+      expect(() => getFileWriter()).toThrowError(/outputFilesPath/);
     });
 
-    it("throws when JOB_FILES_PATH is empty", () => {
-      process.env.JOB_FILES_PATH = "";
-      expect(() => getFileWriter()).toThrowError(/filesPath/);
-    });
-  });
-
-  describe("getFilesPath", () => {
-    it("returns the resolved absolute path for local destinations", () => {
-      expect(getFilesPath()).toBe(path.resolve(tempDir));
-    });
-
-    it("returns gs:// URIs unchanged", () => {
-      process.env.JOB_FILES_PATH = "gs://my-bucket/prefix";
-      expect(getFilesPath()).toBe("gs://my-bucket/prefix");
-    });
-
-    it("throws when JOB_FILES_PATH is unset", () => {
-      delete process.env.JOB_FILES_PATH;
-      expect(() => getFilesPath()).toThrowError(/filesPath/);
+    it("throws when JOB_OUTPUT_FILES_PATH is empty", () => {
+      process.env.JOB_OUTPUT_FILES_PATH = "";
+      expect(() => getFileWriter()).toThrowError(/outputFilesPath/);
     });
   });
 
@@ -155,7 +139,7 @@ describe("getFileWriter", () => {
     });
 
     it("resolves relative base path to absolute", async () => {
-      process.env.JOB_FILES_PATH = tempDir;
+      process.env.JOB_OUTPUT_FILES_PATH = tempDir;
       const writer = getFileWriter();
       const fullPath = await writer.writeText("x.txt", "y");
       expect(path.isAbsolute(fullPath)).toBe(true);
@@ -184,7 +168,7 @@ describe("getFileWriter", () => {
     });
 
     it("routes to the configured bucket and prefix for JSON", async () => {
-      process.env.JOB_FILES_PATH = "gs://my-bucket/jobs";
+      process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/jobs";
       vi.resetModules();
       const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
@@ -204,7 +188,7 @@ describe("getFileWriter", () => {
     });
 
     it("handles bucket-only URIs (no prefix)", async () => {
-      process.env.JOB_FILES_PATH = "gs://my-bucket";
+      process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket";
       vi.resetModules();
       const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
@@ -220,7 +204,7 @@ describe("getFileWriter", () => {
     });
 
     it("passes buffers through as binary", async () => {
-      process.env.JOB_FILES_PATH = "gs://my-bucket/artifacts";
+      process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/artifacts";
       vi.resetModules();
       const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
@@ -236,14 +220,14 @@ describe("getFileWriter", () => {
     });
 
     it("throws on invalid URI without bucket", async () => {
-      process.env.JOB_FILES_PATH = "gs://";
+      process.env.JOB_OUTPUT_FILES_PATH = "gs://";
       vi.resetModules();
       const { getFileWriter: freshWriter } = await import("./files");
       expect(() => freshWriter()).toThrowError(/missing bucket name/);
     });
 
     it("rejects traversal in GCS paths too", async () => {
-      process.env.JOB_FILES_PATH = "gs://my-bucket/jobs";
+      process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/jobs";
       vi.resetModules();
       const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
@@ -252,5 +236,76 @@ describe("getFileWriter", () => {
         /must not traverse upward/,
       );
     });
+  });
+});
+
+describe("getInputFilesPath", () => {
+  let tempDir: string;
+  const originalInputPath = process.env.JOB_INPUT_FILES_PATH;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "input-files-test-"));
+    process.env.JOB_INPUT_FILES_PATH = tempDir;
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalInputPath === undefined) {
+      delete process.env.JOB_INPUT_FILES_PATH;
+    } else {
+      process.env.JOB_INPUT_FILES_PATH = originalInputPath;
+    }
+  });
+
+  it("returns the resolved absolute path for local destinations", () => {
+    expect(getInputFilesPath()).toBe(path.resolve(tempDir));
+  });
+
+  it("returns gs:// URIs unchanged", () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/input";
+    expect(getInputFilesPath()).toBe("gs://my-bucket/input");
+  });
+
+  it("throws when JOB_INPUT_FILES_PATH is unset", () => {
+    delete process.env.JOB_INPUT_FILES_PATH;
+    expect(() => getInputFilesPath()).toThrowError(/inputFilesPath/);
+  });
+
+  it("throws when JOB_INPUT_FILES_PATH is empty", () => {
+    process.env.JOB_INPUT_FILES_PATH = "";
+    expect(() => getInputFilesPath()).toThrowError(/inputFilesPath/);
+  });
+});
+
+describe("getOutputFilesPath", () => {
+  let tempDir: string;
+  const originalOutputPath = process.env.JOB_OUTPUT_FILES_PATH;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "output-files-test-"));
+    process.env.JOB_OUTPUT_FILES_PATH = tempDir;
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalOutputPath === undefined) {
+      delete process.env.JOB_OUTPUT_FILES_PATH;
+    } else {
+      process.env.JOB_OUTPUT_FILES_PATH = originalOutputPath;
+    }
+  });
+
+  it("returns the resolved absolute path for local destinations", () => {
+    expect(getOutputFilesPath()).toBe(path.resolve(tempDir));
+  });
+
+  it("returns gs:// URIs unchanged", () => {
+    process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/output";
+    expect(getOutputFilesPath()).toBe("gs://my-bucket/output");
+  });
+
+  it("throws when JOB_OUTPUT_FILES_PATH is unset", () => {
+    delete process.env.JOB_OUTPUT_FILES_PATH;
+    expect(() => getOutputFilesPath()).toThrowError(/outputFilesPath/);
   });
 });

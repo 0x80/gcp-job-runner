@@ -1,8 +1,13 @@
 # File I/O
 
-Jobs frequently need to produce artifacts — JSON reports, CSV dumps, generated assets — that you want to inspect later. They also sometimes need to _read_ inputs from the same location: fixtures, prior outputs, reference datasets. `getFileWriter()` and `getFilesPath()` give you a single configured destination that works for both, writing to a local directory when running on your machine and to a Cloud Storage bucket when running in the cloud.
+Jobs frequently need to produce artifacts — JSON reports, CSV dumps, generated assets — and sometimes also to _read_ inputs: fixtures, reference datasets, files produced by another job. The runner splits these into two configured destinations per environment:
 
-## Basic Usage
+- **Input** — where the job reads from. Exposed as a path via `getInputFilesPath()`.
+- **Output** — where the job writes to. Exposed as a path via `getOutputFilesPath()`, and wrapped by `getFileWriter()` for convenient writes.
+
+Each destination resolves to a local directory for local runs and a `gs://bucket[/prefix]` URI for cloud runs. Both are independently optional — a job that only writes outputs needs no input config, and vice versa. They may point at the same location when a single directory serves both roles.
+
+## Writing Output Files
 
 ```typescript
 import { defineJob, getFileWriter } from "gcp-job-runner";
@@ -18,28 +23,75 @@ export default defineJob({
 });
 ```
 
-The writer reads its destination from your [runner config](./configuration). For most setups you'll pair a top-level [`localFilesPath`](./configuration#localfilespath) — used for every local run regardless of environment — with a per-environment [`filesPath`](./configuration#filespath) used for cloud execution:
+The writer reads its destination from your [runner config](./configuration). For most setups you'll pair a top-level [`localOutputFilesPath`](./configuration#localoutputfilespath) — used for every local run regardless of environment — with a per-environment [`outputFilesPath`](./configuration#outputfilespath) used for cloud execution:
 
 ```typescript
 // job-runner.config.ts
 import { defineRunnerConfig, defineRunnerEnv } from "gcp-job-runner";
 
 export default defineRunnerConfig({
-  localFilesPath: "./files",
+  localOutputFilesPath: "./output",
   environments: {
     stag: defineRunnerEnv({
       project: "my-project-stag",
-      filesPath: "gs://my-project-stag-files",
+      outputFilesPath: "gs://my-project-stag-output",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
-      filesPath: "gs://my-project-prod-files",
+      outputFilesPath: "gs://my-project-prod-output",
     }),
   },
 });
 ```
 
-`localFilesPath` is optional — if you prefer to configure a destination per environment, just set `filesPath` on each env and leave `localFilesPath` unset.
+## Reading Input Files
+
+Use `getInputFilesPath()` to get the resolved input destination and read with whatever API fits:
+
+```typescript
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { defineJob, getInputFilesPath } from "gcp-job-runner";
+
+export default defineJob({
+  handler: async () => {
+    const base = getInputFilesPath();
+    const raw = await readFile(path.join(base, "airlines.json"), "utf-8");
+    const airlines = JSON.parse(raw);
+    // ...
+  },
+});
+```
+
+Configure an [`inputFilesPath`](./configuration#inputfilespath) per environment and an optional top-level [`localInputFilesPath`](./configuration#localinputfilespath) for local overrides:
+
+```typescript
+export default defineRunnerConfig({
+  localInputFilesPath: "./input",
+  environments: {
+    stag: defineRunnerEnv({
+      project: "my-project-stag",
+      inputFilesPath: "gs://my-project-stag-input",
+    }),
+  },
+});
+```
+
+For `gs://` destinations, use `@google-cloud/storage` directly to fetch objects under the prefix — the library intentionally stays out of the read path so you can stream, list, and filter as your job needs.
+
+### Reading Your Own Output
+
+`getOutputFilesPath()` returns the resolved output destination. Useful when a handler writes a file and then needs its path for a follow-up step, or when chaining steps:
+
+```typescript
+import { getFileWriter, getOutputFilesPath } from "gcp-job-runner";
+
+const writer = getFileWriter();
+await writer.writeJson("intermediate.json", data);
+
+const base = getOutputFilesPath();
+// Feed `path.join(base, "intermediate.json")` to the next step, etc.
+```
 
 ## Writer API
 
@@ -64,7 +116,7 @@ Serializes `data` as pretty-printed JSON (2-space indent, trailing newline). Add
 
 ```typescript
 await files.writeJson("daily-stats", { users: 1234, orders: 56 });
-// → ./files/daily-stats.json
+// → ./output/daily-stats.json
 ```
 
 ### `writeText(relativePath, content)`
@@ -83,39 +135,13 @@ Writes raw bytes. Use for binary formats like PNG, PDF, or protobuf. Uploads wit
 await files.writeBuffer("chart.png", pngBuffer);
 ```
 
-## Reading Files
-
-When a job needs to read from the same destination — a previously generated dataset, a fixture, a file produced by another job — use `getFilesPath()` to get the resolved location and read it with whatever API fits:
-
-```typescript
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { defineJob, getFilesPath } from "gcp-job-runner";
-
-export default defineJob({
-  handler: async () => {
-    const base = getFilesPath();
-    const raw = await readFile(path.join(base, "airlines.json"), "utf-8");
-    const airlines = JSON.parse(raw);
-    // ...
-  },
-});
-```
-
-`getFilesPath()` returns:
-
-- an absolute filesystem path for local destinations, or
-- the full `gs://bucket[/prefix]` URI for cloud destinations.
-
-For `gs://` destinations, use `@google-cloud/storage` directly to fetch objects under that prefix — the library intentionally stays out of the read path so you can stream, list, and filter as your job needs.
-
 ## Nested Paths
 
 All writer methods accept paths with forward slashes. Parent directories are created automatically for local writes; for GCS the segments become part of the object key.
 
 ```typescript
 await files.writeJson(`db/airlines/${code}.json`, airline);
-// Local: ./files/db/airlines/UA.json
+// Local: ./output/db/airlines/UA.json
 // Cloud: gs://my-bucket/db/airlines/UA.json
 ```
 
@@ -123,7 +149,7 @@ Absolute paths and upward traversal (`..`) are rejected so a job can't accidenta
 
 ## Local vs Cloud
 
-| Aspect         | Local (`./files`)                                                      | Cloud (`gs://bucket/prefix`)                     |
+| Aspect         | Local (`./input`, `./output`)                                          | Cloud (`gs://bucket/prefix`)                     |
 | -------------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
 | Resolution     | Relative to the service directory (where `job-runner.config.ts` lives) | Parsed as a GCS URI, bucket + optional prefix    |
 | Storage        | `node:fs` — directories created as needed                              | `@google-cloud/storage`, uploaded with `.save()` |
@@ -134,14 +160,24 @@ The `@google-cloud/storage` module is lazy-loaded — jobs that only ever write 
 
 ## Missing Configuration
 
-If a job calls `getFileWriter()` or `getFilesPath()` without a destination configured — neither `localFilesPath` nor the active environment's `filesPath` is set — the call throws immediately with a message pointing at the config key. Choose the opt-in explicitly rather than relying on implicit defaults.
+Each accessor validates its own destination. Asking for input with no input configured throws — even if output is configured, and vice versa:
 
 ```
-Error: No files destination configured.
-Set `localFilesPath` or the current environment's `filesPath` in your
-job-runner.config.ts, or set JOB_FILES_PATH directly in the environment.
+Error: No input files destination configured.
+Set `localInputFilesPath` or the current environment's `inputFilesPath`
+in your job-runner.config.ts, or set JOB_INPUT_FILES_PATH directly in
+the environment.
 ```
+
+```
+Error: No output files destination configured.
+Set `localOutputFilesPath` or the current environment's `outputFilesPath`
+in your job-runner.config.ts, or set JOB_OUTPUT_FILES_PATH directly in
+the environment.
+```
+
+Choose the opt-in explicitly rather than relying on implicit defaults.
 
 ## Cloud Deployment Safety
 
-`filesPath` values starting with `./` or `../` are rejected at cloud deploy/run time — local paths have no meaning inside a container, and silently writing to the container's filesystem would lose data when the task exits. Configure a `gs://` URI for every non-local environment.
+`inputFilesPath` and `outputFilesPath` values starting with `./` or `../` are rejected at cloud deploy/run time — local paths have no meaning inside a container, and silently reading from or writing to the container's filesystem would fail or lose data when the task exits. Configure a `gs://` URI for every non-local environment.
