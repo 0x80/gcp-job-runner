@@ -130,11 +130,8 @@ function createGcsWriter(uri: string): ExportsWriter {
       return write(withExtension, formatJson(data), "application/json");
     },
     async writeText(relativePath, content) {
-      return write(
-        sanitizeRelativePath(relativePath),
-        content,
-        contentTypeFor(relativePath),
-      );
+      const safe = sanitizeRelativePath(relativePath);
+      return write(safe, content, contentTypeFor(safe));
     },
     async writeBuffer(relativePath, content) {
       return write(
