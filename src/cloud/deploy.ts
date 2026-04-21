@@ -369,19 +369,10 @@ export async function createOrUpdateJob(
   };
 
   /**
-   * Forward the exports destination to the container. Only `gs://` URIs make
-   * sense in the cloud — local paths are rejected to surface config mistakes
-   * early rather than failing silently inside a container with no visible
-   * output location.
+   * Forward the exports destination to the container. Local paths are
+   * rejected earlier by assertCloudExportsPath() in the CLI handlers.
    */
   if (envConfig.exportsPath) {
-    if (!envConfig.exportsPath.startsWith("gs://")) {
-      consola.error(
-        `exportsPath "${envConfig.exportsPath}" is a local path but this is a cloud deployment.\n` +
-          "Use a gs:// URI for cloud environments (e.g. gs://my-bucket/exports).",
-      );
-      process.exit(1);
-    }
     envVars.JOB_EXPORTS_PATH = envConfig.exportsPath;
   }
 
