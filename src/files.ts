@@ -30,11 +30,12 @@ const GCS_PREFIX = "gs://";
 /**
  * Return the resolved input files destination — where the job reads from.
  * Local paths are resolved to an absolute filesystem path; `gs://` URIs
- * pass through unchanged. Use this to locate fixtures, reference datasets,
- * or files produced by another job, and read them with `node:fs` or
- * `@google-cloud/storage` directly.
+ * are validated and canonicalized (trailing slashes stripped). Use this
+ * to locate fixtures, reference datasets, or files produced by another
+ * job, and read them with `node:fs` or `@google-cloud/storage` directly.
  *
- * Throws when no input destination is configured.
+ * Throws when no input destination is configured or the configured
+ * `gs://` URI is malformed (e.g. missing bucket).
  */
 export function getInputFilesPath(): string {
   return resolveDestination(readInputDestination());
@@ -43,11 +44,13 @@ export function getInputFilesPath(): string {
 /**
  * Return the resolved output files destination — where `getFileWriter()`
  * writes to. Local paths are resolved to an absolute filesystem path;
- * `gs://` URIs pass through unchanged. Useful when a job needs to read
- * back its own artifacts (e.g., to chain steps within a handler) or pass
- * the destination to another tool.
+ * `gs://` URIs are validated and canonicalized (trailing slashes
+ * stripped). Useful when a job needs to read back its own artifacts
+ * (e.g., to chain steps within a handler) or pass the destination to
+ * another tool.
  *
- * Throws when no output destination is configured.
+ * Throws when no output destination is configured or the configured
+ * `gs://` URI is malformed (e.g. missing bucket).
  */
 export function getOutputFilesPath(): string {
   return resolveDestination(readOutputDestination());
@@ -72,9 +75,18 @@ export function getFileWriter(): FileWriter {
 }
 
 function resolveDestination(destination: string): string {
-  return destination.startsWith(GCS_PREFIX)
-    ? destination
-    : path.resolve(destination);
+  if (destination.startsWith(GCS_PREFIX)) {
+    /**
+     * Validate and canonicalize via the same parser the writer uses, so
+     * read and write paths stay consistent — reject `gs://` without a
+     * bucket and strip any trailing slash from the prefix.
+     */
+    const { bucket, prefix } = parseGcsUri(destination);
+    return prefix
+      ? `${GCS_PREFIX}${bucket}/${prefix}`
+      : `${GCS_PREFIX}${bucket}`;
+  }
+  return path.resolve(destination);
 }
 
 function readInputDestination(): string {

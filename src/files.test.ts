@@ -261,9 +261,24 @@ describe("getInputFilesPath", () => {
     expect(getInputFilesPath()).toBe(path.resolve(tempDir));
   });
 
-  it("returns gs:// URIs unchanged", () => {
+  it("returns gs:// URIs in canonical form", () => {
     process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/input";
     expect(getInputFilesPath()).toBe("gs://my-bucket/input");
+  });
+
+  it("strips trailing slashes from gs:// URIs", () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/input/";
+    expect(getInputFilesPath()).toBe("gs://my-bucket/input");
+  });
+
+  it("returns bucket-only gs:// URIs without a trailing slash", () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket";
+    expect(getInputFilesPath()).toBe("gs://my-bucket");
+  });
+
+  it("throws on gs:// URIs missing a bucket", () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://";
+    expect(() => getInputFilesPath()).toThrowError(/missing bucket name/);
   });
 
   it("throws when JOB_INPUT_FILES_PATH is unset", () => {
@@ -299,9 +314,19 @@ describe("getOutputFilesPath", () => {
     expect(getOutputFilesPath()).toBe(path.resolve(tempDir));
   });
 
-  it("returns gs:// URIs unchanged", () => {
+  it("returns gs:// URIs in canonical form", () => {
     process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/output";
     expect(getOutputFilesPath()).toBe("gs://my-bucket/output");
+  });
+
+  it("strips trailing slashes from gs:// URIs", () => {
+    process.env.JOB_OUTPUT_FILES_PATH = "gs://my-bucket/output/";
+    expect(getOutputFilesPath()).toBe("gs://my-bucket/output");
+  });
+
+  it("throws on gs:// URIs missing a bucket", () => {
+    process.env.JOB_OUTPUT_FILES_PATH = "gs://";
+    expect(() => getOutputFilesPath()).toThrowError(/missing bucket name/);
   });
 
   it("throws when JOB_OUTPUT_FILES_PATH is unset", () => {
