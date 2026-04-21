@@ -39,8 +39,9 @@ export function getExportsWriter(): ExportsWriter {
   if (!destination) {
     throw new Error(
       "No exports destination configured.\n" +
-        "Set `exportsPath` on the current environment in your job-runner.config.ts, " +
-        "or set JOB_EXPORTS_PATH directly in the environment.",
+        "Set `localExportsPath` or the current environment's `exportsPath` " +
+        "in your job-runner.config.ts, or set JOB_EXPORTS_PATH directly in " +
+        "the environment.",
     );
   }
 

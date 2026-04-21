@@ -21,6 +21,9 @@ export default defineJob({
 The writer reads its destination from your [runner config](./configuration). For most setups you'll pair a top-level [`localExportsPath`](./configuration#localexportspath) — used for every local run regardless of environment — with a per-environment [`exportsPath`](./configuration#exportspath) used for cloud execution:
 
 ```typescript
+// job-runner.config.ts
+import { defineRunnerConfig, defineRunnerEnv } from "gcp-job-runner";
+
 export default defineRunnerConfig({
   localExportsPath: "./exports",
   environments: {
@@ -109,8 +112,8 @@ If a job calls `getExportsWriter()` without a destination configured — neither
 
 ```
 Error: No exports destination configured.
-Set `exportsPath` on the current environment in your job-runner.config.ts,
-or set JOB_EXPORTS_PATH directly in the environment.
+Set `localExportsPath` or the current environment's `exportsPath` in your
+job-runner.config.ts, or set JOB_EXPORTS_PATH directly in the environment.
 ```
 
 ## Cloud Deployment Safety
