@@ -180,4 +180,4 @@ Choose the opt-in explicitly rather than relying on implicit defaults.
 
 ## Cloud Deployment Safety
 
-`inputFilesPath` and `outputFilesPath` values starting with `./` or `../` are rejected at cloud deploy/run time — local paths have no meaning inside a container, and silently reading from or writing to the container's filesystem would fail or lose data when the task exits. Configure a `gs://` URI for every non-local environment.
+Any `inputFilesPath` or `outputFilesPath` value that is not a `gs://` URI is rejected at cloud deploy/run time — local paths have no meaning inside a container, and silently reading from or writing to the container's filesystem would fail or lose data when the task exits. Configure a `gs://` URI for every non-local environment.
