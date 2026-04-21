@@ -54,11 +54,11 @@ export function getExportsWriter(): ExportsWriter {
 function createLocalWriter(basePath: string): ExportsWriter {
   const resolvedBase = path.resolve(basePath);
 
+  /** Takes an already-sanitized relative path and writes the content. */
   async function write(
-    relativePath: string,
+    safeRelative: string,
     content: string | Uint8Array,
   ): Promise<string> {
-    const safeRelative = sanitizeRelativePath(relativePath);
     const fullPath = path.join(resolvedBase, safeRelative);
 
     await mkdir(path.dirname(fullPath), { recursive: true });
@@ -77,11 +77,11 @@ function createLocalWriter(basePath: string): ExportsWriter {
       );
       return write(withExtension, formatJson(data));
     },
-    writeText(relativePath, content) {
-      return write(relativePath, content);
+    async writeText(relativePath, content) {
+      return write(sanitizeRelativePath(relativePath), content);
     },
-    writeBuffer(relativePath, content) {
-      return write(relativePath, content);
+    async writeBuffer(relativePath, content) {
+      return write(sanitizeRelativePath(relativePath), content);
     },
   };
 }
@@ -94,12 +94,12 @@ interface GcsTarget {
 function createGcsWriter(uri: string): ExportsWriter {
   const target = parseGcsUri(uri);
 
+  /** Takes an already-sanitized relative path and uploads the content. */
   async function write(
-    relativePath: string,
+    safeRelative: string,
     content: string | Buffer | Uint8Array,
     contentType: string,
   ): Promise<string> {
-    const safeRelative = sanitizeRelativePath(relativePath);
     const objectName = joinGcsPath(target.prefix, safeRelative);
     const fullUri = `${GCS_PREFIX}${target.bucket}/${objectName}`;
 
@@ -129,11 +129,19 @@ function createGcsWriter(uri: string): ExportsWriter {
       );
       return write(withExtension, formatJson(data), "application/json");
     },
-    writeText(relativePath, content) {
-      return write(relativePath, content, contentTypeFor(relativePath));
+    async writeText(relativePath, content) {
+      return write(
+        sanitizeRelativePath(relativePath),
+        content,
+        contentTypeFor(relativePath),
+      );
     },
-    writeBuffer(relativePath, content) {
-      return write(relativePath, content, "application/octet-stream");
+    async writeBuffer(relativePath, content) {
+      return write(
+        sanitizeRelativePath(relativePath),
+        content,
+        "application/octet-stream",
+      );
     },
   };
 }
