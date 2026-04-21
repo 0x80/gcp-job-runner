@@ -89,12 +89,12 @@ Absolute paths and upward traversal (`..`) are rejected so a job can't accidenta
 
 ## Local vs Cloud
 
-| Aspect            | Local (`./exports`)                              | Cloud (`gs://bucket/prefix`)                  |
-| ----------------- | ------------------------------------------------ | --------------------------------------------- |
-| Resolution        | Relative to the service directory (where `job-runner.config.ts` lives) | Parsed as a GCS URI, bucket + optional prefix |
-| Storage           | `node:fs` — directories created as needed        | `@google-cloud/storage`, uploaded with `.save()` |
-| Authentication    | None required                                    | Application Default Credentials (ADC)         |
-| Returned value    | Absolute filesystem path                         | Full `gs://` URI                              |
+| Aspect         | Local (`./exports`)                                                    | Cloud (`gs://bucket/prefix`)                     |
+| -------------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
+| Resolution     | Relative to the service directory (where `job-runner.config.ts` lives) | Parsed as a GCS URI, bucket + optional prefix    |
+| Storage        | `node:fs` — directories created as needed                              | `@google-cloud/storage`, uploaded with `.save()` |
+| Authentication | None required                                                          | Application Default Credentials (ADC)            |
+| Returned value | Absolute filesystem path                                               | Full `gs://` URI                                 |
 
 The `@google-cloud/storage` module is lazy-loaded — jobs that only ever write to local paths don't pay the startup cost.
 
