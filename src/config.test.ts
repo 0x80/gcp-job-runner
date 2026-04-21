@@ -1,66 +1,92 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveLocalExportsPath } from "./config";
+import {
+  resolveLocalInputFilesPath,
+  resolveLocalOutputFilesPath,
+} from "./config";
 
 const SERVICE_DIR = "/srv/my-service";
 
-describe("resolveLocalExportsPath", () => {
-  it("returns undefined when neither localExportsPath nor exportsPath is set", () => {
-    expect(resolveLocalExportsPath({}, {}, SERVICE_DIR)).toBeUndefined();
+describe("resolveLocalInputFilesPath", () => {
+  it("returns undefined when neither localInputFilesPath nor inputFilesPath is set", () => {
+    expect(resolveLocalInputFilesPath({}, {}, SERVICE_DIR)).toBeUndefined();
   });
 
-  it("prefers localExportsPath over env.exportsPath", () => {
-    const result = resolveLocalExportsPath(
-      { localExportsPath: "./exports" },
-      { exportsPath: "gs://stag-bucket" },
+  it("prefers localInputFilesPath over env.inputFilesPath", () => {
+    const result = resolveLocalInputFilesPath(
+      { localInputFilesPath: "./input" },
+      { inputFilesPath: "gs://stag-bucket/input" },
       SERVICE_DIR,
     );
-    expect(result).toBe(path.resolve(SERVICE_DIR, "./exports"));
+    expect(result).toBe(path.resolve(SERVICE_DIR, "./input"));
   });
 
-  it("falls back to env.exportsPath when localExportsPath is unset", () => {
-    const result = resolveLocalExportsPath(
+  it("falls back to env.inputFilesPath when localInputFilesPath is unset", () => {
+    const result = resolveLocalInputFilesPath(
       {},
-      { exportsPath: "./exports" },
+      { inputFilesPath: "./input" },
       SERVICE_DIR,
     );
-    expect(result).toBe(path.resolve(SERVICE_DIR, "./exports"));
+    expect(result).toBe(path.resolve(SERVICE_DIR, "./input"));
   });
 
   it("resolves relative paths against the service directory", () => {
-    const result = resolveLocalExportsPath(
-      { localExportsPath: "../../shared-exports" },
+    const result = resolveLocalInputFilesPath(
+      { localInputFilesPath: "../../shared-input" },
       {},
       SERVICE_DIR,
     );
-    expect(result).toBe(path.resolve(SERVICE_DIR, "../../shared-exports"));
+    expect(result).toBe(path.resolve(SERVICE_DIR, "../../shared-input"));
   });
 
-  it("passes gs:// URIs through unchanged from localExportsPath", () => {
-    const result = resolveLocalExportsPath(
-      { localExportsPath: "gs://dev-bucket/prefix" },
-      { exportsPath: "gs://stag-bucket" },
+  it("passes gs:// URIs through unchanged from localInputFilesPath", () => {
+    const result = resolveLocalInputFilesPath(
+      { localInputFilesPath: "gs://dev-bucket/input" },
+      { inputFilesPath: "gs://stag-bucket/input" },
       SERVICE_DIR,
     );
-    expect(result).toBe("gs://dev-bucket/prefix");
+    expect(result).toBe("gs://dev-bucket/input");
   });
 
-  it("passes gs:// URIs through unchanged from env.exportsPath fallback", () => {
-    const result = resolveLocalExportsPath(
+  it("passes gs:// URIs through unchanged from env.inputFilesPath fallback", () => {
+    const result = resolveLocalInputFilesPath(
       {},
-      { exportsPath: "gs://stag-bucket/sub" },
+      { inputFilesPath: "gs://stag-bucket/input" },
       SERVICE_DIR,
     );
-    expect(result).toBe("gs://stag-bucket/sub");
+    expect(result).toBe("gs://stag-bucket/input");
+  });
+});
+
+describe("resolveLocalOutputFilesPath", () => {
+  it("returns undefined when neither localOutputFilesPath nor outputFilesPath is set", () => {
+    expect(resolveLocalOutputFilesPath({}, {}, SERVICE_DIR)).toBeUndefined();
   });
 
-  it("preserves existing behaviour when only env.exportsPath is a local path", () => {
-    /** Regression guard for the 1.7.0 behaviour */
-    const result = resolveLocalExportsPath(
-      {},
-      { exportsPath: "./exports" },
+  it("prefers localOutputFilesPath over env.outputFilesPath", () => {
+    const result = resolveLocalOutputFilesPath(
+      { localOutputFilesPath: "./output" },
+      { outputFilesPath: "gs://stag-bucket/output" },
       SERVICE_DIR,
     );
-    expect(result).toBe(path.resolve(SERVICE_DIR, "./exports"));
+    expect(result).toBe(path.resolve(SERVICE_DIR, "./output"));
+  });
+
+  it("falls back to env.outputFilesPath when localOutputFilesPath is unset", () => {
+    const result = resolveLocalOutputFilesPath(
+      {},
+      { outputFilesPath: "./output" },
+      SERVICE_DIR,
+    );
+    expect(result).toBe(path.resolve(SERVICE_DIR, "./output"));
+  });
+
+  it("passes gs:// URIs through unchanged from localOutputFilesPath", () => {
+    const result = resolveLocalOutputFilesPath(
+      { localOutputFilesPath: "gs://dev-bucket/output" },
+      { outputFilesPath: "gs://stag-bucket/output" },
+      SERVICE_DIR,
+    );
+    expect(result).toBe("gs://dev-bucket/output");
   });
 });

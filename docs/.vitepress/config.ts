@@ -14,7 +14,7 @@ export default defineConfig({
           { text: "Getting Started", link: "/getting-started" },
           { text: "Configuration", link: "/configuration" },
           { text: "Defining Jobs", link: "/defining-jobs" },
-          { text: "Writing Exports", link: "/exports" },
+          { text: "File I/O", link: "/files" },
           { text: "CLI Usage", link: "/cli-usage" },
         ],
       },

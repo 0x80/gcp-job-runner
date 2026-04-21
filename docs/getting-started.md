@@ -126,6 +126,6 @@ This discovers all compiled `.mjs` files in your jobs directory and lists them.
 - [Database Migration Example](./migration-example) — A real-world Firestore migration job
 - [Configuration](./configuration) — Full reference for `job-runner.config.ts`
 - [Defining Jobs](./defining-jobs) — Schema options, aliases, examples, and more
-- [Writing Exports](./exports) — Produce JSON, CSV, or binary artifacts from a job
+- [File I/O](./files) — Read and write JSON, CSV, or binary files from a job
 - [CLI Usage](./cli-usage) — All the ways to pass arguments
 - [Cloud Jobs](./cloud-jobs) — Deploy and run jobs in Cloud Run
