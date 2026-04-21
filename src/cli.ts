@@ -5,7 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape } from "zod";
-import { resolveLocalExportsPath, type RunnerConfig } from "./config";
+import { resolveLocalFilesPath, type RunnerConfig } from "./config";
 import {
   createOrUpdateJob,
   deployIfChanged,
@@ -316,17 +316,17 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
   /**
-   * `localExportsPath` wins over the environment's `exportsPath` for local
+   * `localFilesPath` wins over the environment's `filesPath` for local
    * runs so developers can use one destination regardless of whether they
    * point at stag or prod data.
    */
-  const localExportsPath = resolveLocalExportsPath(
+  const localFilesPath = resolveLocalFilesPath(
     config,
     envConfig,
     process.cwd(),
   );
-  if (localExportsPath !== undefined) {
-    process.env.JOB_EXPORTS_PATH = localExportsPath;
+  if (localFilesPath !== undefined) {
+    process.env.JOB_FILES_PATH = localFilesPath;
   }
 
   if (envConfig.secrets && envConfig.secrets.length > 0) {
@@ -399,7 +399,7 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
     process.exit(1);
   }
 
-  assertCloudExportsPath(envConfig);
+  assertCloudFilesPath(envConfig);
 
   const serviceDirectory = process.cwd();
 
@@ -414,16 +414,16 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
 }
 
 /**
- * Reject local exportsPath values for cloud commands — they would silently
+ * Reject local filesPath values for cloud commands — they would silently
  * write to a container filesystem that is discarded on task exit.
  */
-function assertCloudExportsPath(
+function assertCloudFilesPath(
   envConfig: RunnerConfig["environments"][string],
 ): void {
-  if (envConfig.exportsPath && !envConfig.exportsPath.startsWith("gs://")) {
+  if (envConfig.filesPath && !envConfig.filesPath.startsWith("gs://")) {
     consola.error(
-      `exportsPath "${envConfig.exportsPath}" is a local path but this is a cloud command.\n` +
-        "Use a gs:// URI for cloud environments (e.g. gs://my-bucket/exports).",
+      `filesPath "${envConfig.filesPath}" is a local path but this is a cloud command.\n` +
+        "Use a gs:// URI for cloud environments (e.g. gs://my-bucket/files).",
     );
     process.exit(1);
   }
@@ -464,7 +464,7 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
     process.exit(1);
   }
 
-  assertCloudExportsPath(envConfig);
+  assertCloudFilesPath(envConfig);
 
   /** Override parallelism from CLI flag */
   if (parallelism !== undefined) {

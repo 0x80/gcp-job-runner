@@ -370,11 +370,11 @@ export async function createOrUpdateJob(
   };
 
   /**
-   * Forward the exports destination to the container. Local paths are
-   * rejected earlier by assertCloudExportsPath() in the CLI handlers.
+   * Forward the files destination to the container. Local paths are
+   * rejected earlier by assertCloudFilesPath() in the CLI handlers.
    */
-  if (envConfig.exportsPath) {
-    envVars.JOB_EXPORTS_PATH = envConfig.exportsPath;
+  if (envConfig.filesPath) {
+    envVars.JOB_FILES_PATH = envConfig.filesPath;
   }
 
   const envVarsString = Object.entries(envVars)

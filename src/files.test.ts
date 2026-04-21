@@ -3,42 +3,58 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { consola } from "consola";
-import { getExportsWriter } from "./exports";
+import { getFilesPath, getFileWriter } from "./files";
 
-describe("getExportsWriter", () => {
+describe("getFileWriter", () => {
   let tempDir: string;
-  const originalExportsPath = process.env.JOB_EXPORTS_PATH;
+  const originalFilesPath = process.env.JOB_FILES_PATH;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(path.join(os.tmpdir(), "exports-test-"));
-    process.env.JOB_EXPORTS_PATH = tempDir;
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "files-test-"));
+    process.env.JOB_FILES_PATH = tempDir;
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
-    if (originalExportsPath === undefined) {
-      delete process.env.JOB_EXPORTS_PATH;
+    if (originalFilesPath === undefined) {
+      delete process.env.JOB_FILES_PATH;
     } else {
-      process.env.JOB_EXPORTS_PATH = originalExportsPath;
+      process.env.JOB_FILES_PATH = originalFilesPath;
     }
     vi.restoreAllMocks();
   });
 
   describe("configuration", () => {
-    it("throws when JOB_EXPORTS_PATH is unset", () => {
-      delete process.env.JOB_EXPORTS_PATH;
-      expect(() => getExportsWriter()).toThrowError(/exportsPath/);
+    it("throws when JOB_FILES_PATH is unset", () => {
+      delete process.env.JOB_FILES_PATH;
+      expect(() => getFileWriter()).toThrowError(/filesPath/);
     });
 
-    it("throws when JOB_EXPORTS_PATH is empty", () => {
-      process.env.JOB_EXPORTS_PATH = "";
-      expect(() => getExportsWriter()).toThrowError(/exportsPath/);
+    it("throws when JOB_FILES_PATH is empty", () => {
+      process.env.JOB_FILES_PATH = "";
+      expect(() => getFileWriter()).toThrowError(/filesPath/);
+    });
+  });
+
+  describe("getFilesPath", () => {
+    it("returns the resolved absolute path for local destinations", () => {
+      expect(getFilesPath()).toBe(path.resolve(tempDir));
+    });
+
+    it("returns gs:// URIs unchanged", () => {
+      process.env.JOB_FILES_PATH = "gs://my-bucket/prefix";
+      expect(getFilesPath()).toBe("gs://my-bucket/prefix");
+    });
+
+    it("throws when JOB_FILES_PATH is unset", () => {
+      delete process.env.JOB_FILES_PATH;
+      expect(() => getFilesPath()).toThrowError(/filesPath/);
     });
   });
 
   describe("local writer", () => {
     it("writes pretty-printed JSON with trailing newline", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const fullPath = await writer.writeJson("data.json", {
         a: 1,
         b: [2, 3],
@@ -51,7 +67,7 @@ describe("getExportsWriter", () => {
     });
 
     it("adds .json extension when missing", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const fullPath = await writer.writeJson("report", { ok: true });
 
       expect(fullPath).toBe(path.join(tempDir, "report.json"));
@@ -59,13 +75,13 @@ describe("getExportsWriter", () => {
     });
 
     it("does not double-add .json extension", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const fullPath = await writer.writeJson("report.json", { ok: true });
       expect(fullPath).toBe(path.join(tempDir, "report.json"));
     });
 
     it("writes text content unchanged", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const csv = "id,name\n1,Alice\n2,Bob\n";
       const fullPath = await writer.writeText("users.csv", csv);
 
@@ -74,7 +90,7 @@ describe("getExportsWriter", () => {
     });
 
     it("writes binary buffers unchanged", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const buffer = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
       const fullPath = await writer.writeBuffer("icon.png", buffer);
 
@@ -84,7 +100,7 @@ describe("getExportsWriter", () => {
     });
 
     it("creates nested directories as needed", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const fullPath = await writer.writeJson("db/airlines/UA.json", {
         code: "UA",
       });
@@ -95,7 +111,7 @@ describe("getExportsWriter", () => {
 
     it("logs the written path", async () => {
       const infoSpy = vi.spyOn(consola, "info").mockImplementation(() => {});
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       await writer.writeText("a.txt", "hi");
       expect(infoSpy).toHaveBeenCalledWith(
         expect.stringContaining(path.join(tempDir, "a.txt")),
@@ -103,14 +119,14 @@ describe("getExportsWriter", () => {
     });
 
     it("rejects absolute paths", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       await expect(writer.writeText("/etc/passwd", "pwned")).rejects.toThrow(
         /Absolute paths are not allowed/,
       );
     });
 
     it("rejects parent-directory traversal", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       await expect(writer.writeText("../escape.txt", "pwned")).rejects.toThrow(
         /must not traverse upward/,
       );
@@ -123,14 +139,14 @@ describe("getExportsWriter", () => {
     });
 
     it("allows filenames that start with two dots", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       const fullPath = await writer.writeText("..hidden", "ok");
       expect(fullPath).toBe(path.join(tempDir, "..hidden"));
       expect(readFileSync(fullPath, "utf-8")).toBe("ok");
     });
 
     it("rejects empty paths", async () => {
-      const writer = getExportsWriter();
+      const writer = getFileWriter();
       await expect(writer.writeText("", "x")).rejects.toThrow(/empty/);
       await expect(writer.writeBuffer("", Buffer.from("x"))).rejects.toThrow(
         /empty/,
@@ -139,8 +155,8 @@ describe("getExportsWriter", () => {
     });
 
     it("resolves relative base path to absolute", async () => {
-      process.env.JOB_EXPORTS_PATH = tempDir;
-      const writer = getExportsWriter();
+      process.env.JOB_FILES_PATH = tempDir;
+      const writer = getFileWriter();
       const fullPath = await writer.writeText("x.txt", "y");
       expect(path.isAbsolute(fullPath)).toBe(true);
     });
@@ -168,9 +184,9 @@ describe("getExportsWriter", () => {
     });
 
     it("routes to the configured bucket and prefix for JSON", async () => {
-      process.env.JOB_EXPORTS_PATH = "gs://my-bucket/jobs";
+      process.env.JOB_FILES_PATH = "gs://my-bucket/jobs";
       vi.resetModules();
-      const { getExportsWriter: freshWriter } = await import("./exports");
+      const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
 
       const uri = await writer.writeJson("data/flights.json", { count: 5 });
@@ -188,9 +204,9 @@ describe("getExportsWriter", () => {
     });
 
     it("handles bucket-only URIs (no prefix)", async () => {
-      process.env.JOB_EXPORTS_PATH = "gs://my-bucket";
+      process.env.JOB_FILES_PATH = "gs://my-bucket";
       vi.resetModules();
-      const { getExportsWriter: freshWriter } = await import("./exports");
+      const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
 
       const uri = await writer.writeText("report.csv", "a,b\n1,2\n");
@@ -204,9 +220,9 @@ describe("getExportsWriter", () => {
     });
 
     it("passes buffers through as binary", async () => {
-      process.env.JOB_EXPORTS_PATH = "gs://my-bucket/artifacts";
+      process.env.JOB_FILES_PATH = "gs://my-bucket/artifacts";
       vi.resetModules();
-      const { getExportsWriter: freshWriter } = await import("./exports");
+      const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
 
       const buffer = Buffer.from([1, 2, 3]);
@@ -220,16 +236,16 @@ describe("getExportsWriter", () => {
     });
 
     it("throws on invalid URI without bucket", async () => {
-      process.env.JOB_EXPORTS_PATH = "gs://";
+      process.env.JOB_FILES_PATH = "gs://";
       vi.resetModules();
-      const { getExportsWriter: freshWriter } = await import("./exports");
+      const { getFileWriter: freshWriter } = await import("./files");
       expect(() => freshWriter()).toThrowError(/missing bucket name/);
     });
 
     it("rejects traversal in GCS paths too", async () => {
-      process.env.JOB_EXPORTS_PATH = "gs://my-bucket/jobs";
+      process.env.JOB_FILES_PATH = "gs://my-bucket/jobs";
       vi.resetModules();
-      const { getExportsWriter: freshWriter } = await import("./exports");
+      const { getFileWriter: freshWriter } = await import("./files");
       const writer = freshWriter();
 
       await expect(writer.writeText("../secret.txt", "no")).rejects.toThrow(

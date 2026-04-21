@@ -4,12 +4,12 @@ import { consola } from "consola";
 import type { Storage } from "@google-cloud/storage";
 
 /**
- * Writer for job artifacts, produced by `getExportsWriter()`. A single writer
- * instance targets a destination configured via the `exportsPath` runner
+ * Writer for job files, produced by `getFileWriter()`. A single writer
+ * instance targets a destination configured via the `filesPath` runner
  * option (local directory or `gs://` URI). All methods return the resolved
- * absolute path or `gs://` URI of the written artifact.
+ * absolute path or `gs://` URI of the written file.
  */
-export interface ExportsWriter {
+export interface FileWriter {
   /**
    * Write a value as pretty-printed JSON (2-space indent, trailing newline).
    * The `.json` extension is added if missing.
@@ -27,23 +27,31 @@ export interface ExportsWriter {
 const GCS_PREFIX = "gs://";
 
 /**
- * Return a writer that persists artifacts to the destination configured via
- * the `exportsPath` runner option. Local paths are used for local execution;
+ * Return the resolved destination for files written via `getFileWriter()`.
+ * Local paths are resolved to an absolute filesystem path; `gs://` URIs
+ * pass through unchanged. Scripts that need to read from the same
+ * destination — fixtures, prior outputs, input datasets — can use this
+ * to locate existing files and read them with `node:fs` or
+ * `@google-cloud/storage` directly.
+ *
+ * Throws when no destination is configured.
+ */
+export function getFilesPath(): string {
+  const destination = readDestination();
+  return destination.startsWith(GCS_PREFIX)
+    ? destination
+    : path.resolve(destination);
+}
+
+/**
+ * Return a writer that persists files to the destination configured via
+ * the `filesPath` runner option. Local paths are used for local execution;
  * `gs://bucket[/prefix]` URIs are used for Cloud Run deployments.
  *
  * Throws when no destination is configured.
  */
-export function getExportsWriter(): ExportsWriter {
-  const destination = process.env.JOB_EXPORTS_PATH;
-
-  if (!destination) {
-    throw new Error(
-      "No exports destination configured.\n" +
-        "Set `localExportsPath` or the current environment's `exportsPath` " +
-        "in your job-runner.config.ts, or set JOB_EXPORTS_PATH directly in " +
-        "the environment.",
-    );
-  }
+export function getFileWriter(): FileWriter {
+  const destination = readDestination();
 
   if (destination.startsWith(GCS_PREFIX)) {
     return createGcsWriter(destination);
@@ -52,7 +60,22 @@ export function getExportsWriter(): ExportsWriter {
   return createLocalWriter(destination);
 }
 
-function createLocalWriter(basePath: string): ExportsWriter {
+function readDestination(): string {
+  const destination = process.env.JOB_FILES_PATH;
+
+  if (!destination) {
+    throw new Error(
+      "No files destination configured.\n" +
+        "Set `localFilesPath` or the current environment's `filesPath` " +
+        "in your job-runner.config.ts, or set JOB_FILES_PATH directly in " +
+        "the environment.",
+    );
+  }
+
+  return destination;
+}
+
+function createLocalWriter(basePath: string): FileWriter {
   const resolvedBase = path.resolve(basePath);
 
   /** Takes an already-sanitized relative path and writes the content. */
@@ -65,7 +88,7 @@ function createLocalWriter(basePath: string): ExportsWriter {
     await mkdir(path.dirname(fullPath), { recursive: true });
     await writeFile(fullPath, content);
 
-    consola.info(`Export written: ${fullPath}`);
+    consola.info(`File written: ${fullPath}`);
     return fullPath;
   }
 
@@ -92,7 +115,7 @@ interface GcsTarget {
   prefix: string;
 }
 
-function createGcsWriter(uri: string): ExportsWriter {
+function createGcsWriter(uri: string): FileWriter {
   const target = parseGcsUri(uri);
 
   /** Takes an already-sanitized relative path and uploads the content. */
@@ -117,7 +140,7 @@ function createGcsWriter(uri: string): ExportsWriter {
       resumable: false,
     });
 
-    consola.info(`Export written: ${fullUri}`);
+    consola.info(`File written: ${fullUri}`);
     return fullUri;
   }
 
@@ -184,12 +207,12 @@ function joinGcsPath(prefix: string, relative: string): string {
 
 function sanitizeRelativePath(relativePath: string): string {
   if (!relativePath || relativePath.trim() === "") {
-    throw new Error("Export path is empty");
+    throw new Error("File path is empty");
   }
 
   if (path.isAbsolute(relativePath) || relativePath.startsWith("/")) {
     throw new Error(
-      `Export path must be relative, got "${relativePath}". ` +
+      `File path must be relative, got "${relativePath}". ` +
         "Absolute paths are not allowed.",
     );
   }
@@ -203,7 +226,7 @@ function sanitizeRelativePath(relativePath: string): string {
    */
   if (normalized.split("/").includes("..")) {
     throw new Error(
-      `Export path must not traverse upward, got "${relativePath}".`,
+      `File path must not traverse upward, got "${relativePath}".`,
     );
   }
 

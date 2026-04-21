@@ -30,12 +30,12 @@ export default defineRunnerConfig({
     stag: defineRunnerEnv({
       project: "my-project",
       secrets: ["API_KEY"],
-      exportsPath: "gs://my-project-stag-exports",
+      filesPath: "gs://my-project-stag-files",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
       secrets: ["API_KEY"],
-      exportsPath: "gs://my-project-prod-exports",
+      filesPath: "gs://my-project-prod-files",
     }),
   },
   cloud: {
@@ -44,7 +44,7 @@ export default defineRunnerConfig({
 });
 ```
 
-`exportsPath` is optional — set it if your jobs produce artifacts via [`getExportsWriter()`](./exports). Cloud environments require a `gs://` URI; attempting to deploy with a local path fails fast with a clear error.
+`filesPath` is optional — set it if your jobs read or write files via [`getFileWriter()` / `getFilesPath()`](./files). Cloud environments require a `gs://` URI; attempting to deploy with a local path fails fast with a clear error.
 
 ### 2. Add Build Entry for Jobs
 

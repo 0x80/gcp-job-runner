@@ -47,10 +47,10 @@ interface RunnerConfig {
   environments: Record<string, RunnerEnvOptions>;
 
   /**
-   * Destination used by getExportsWriter() for every local run, regardless
-   * of which environment is selected. Local path or gs:// URI.
+   * Destination used by getFileWriter()/getFilesPath() for every local run,
+   * regardless of which environment is selected. Local path or gs:// URI.
    */
-  localExportsPath?: string;
+  localFilesPath?: string;
 
   /** Cloud Run Jobs configuration */
   cloud?: CloudConfig;
@@ -97,34 +97,34 @@ export default defineRunnerConfig({
 
 Build output is hidden to keep the terminal clean — you'll see a "Building..." indicator. If the build fails, the full output is displayed.
 
-### `localExportsPath`
+### `localFilesPath`
 
-A destination used by [`getExportsWriter()`](./exports) for every local run, regardless of which environment is selected. Either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
+A destination used by [`getFileWriter()`](./files) and [`getFilesPath()`](./files) for every local run, regardless of which environment is selected. Either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
 
 ```typescript
 export default defineRunnerConfig({
-  localExportsPath: "./exports",
+  localFilesPath: "./files",
   environments: {
     stag: defineRunnerEnv({
       project: "my-project-stag",
-      exportsPath: "gs://my-project-stag-exports",
+      filesPath: "gs://my-project-stag-files",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
-      exportsPath: "gs://my-project-prod-exports",
+      filesPath: "gs://my-project-prod-files",
     }),
   },
 });
 ```
 
-When running jobs locally, the selected environment still controls which project's data you read or write — but the _destination_ for artifacts is usually the same developer machine. `localExportsPath` captures that: one top-level setting instead of per-env duplication.
+When running jobs locally, the selected environment still controls which project's data you read or write — but the _destination_ for files is usually the same developer machine. `localFilesPath` captures that: one top-level setting instead of per-env duplication.
 
-When `localExportsPath` is set:
+When `localFilesPath` is set:
 
-- Local runs (`job local run <env>`) use `localExportsPath` and ignore the environment's `exportsPath`.
-- Cloud runs (`job cloud run <env>` / `job cloud deploy <env>`) use the environment's `exportsPath` as before.
+- Local runs (`job local run <env>`) use `localFilesPath` and ignore the environment's `filesPath`.
+- Cloud runs (`job cloud run <env>` / `job cloud deploy <env>`) use the environment's `filesPath` as before.
 
-When `localExportsPath` is unset, local runs fall back to the environment's `exportsPath` — existing configurations continue to work unchanged.
+When `localFilesPath` is unset, local runs fall back to the environment's `filesPath` — existing configurations continue to work unchanged.
 
 ### `cloud`
 
@@ -194,8 +194,8 @@ interface RunnerEnvOptions {
   /** Secret names to load from GCP Secret Manager */
   secrets?: string[];
 
-  /** Destination for artifacts written via getExportsWriter() */
-  exportsPath?: string;
+  /** Destination for files written via getFileWriter()/read via getFilesPath() */
+  filesPath?: string;
 }
 ```
 
@@ -234,31 +234,31 @@ Additional environment variables to set. These override any values loaded from `
 
 An array of secret names to load from GCP Secret Manager. The secrets are loaded identically for both local and cloud execution — the execution environment is transparent.
 
-### `exportsPath`
+### `filesPath`
 
-Destination for artifacts written via [`getExportsWriter()`](./exports) for this environment. Accepts either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
+Destination for files written via [`getFileWriter()`](./files) and read via [`getFilesPath()`](./files) for this environment. Accepts either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
 
-For most setups this is a `gs://` URI per environment, paired with a top-level [`localExportsPath`](#localexportspath) that handles every local run:
+For most setups this is a `gs://` URI per environment, paired with a top-level [`localFilesPath`](#localfilespath) that handles every local run:
 
 ```typescript
 export default defineRunnerConfig({
-  localExportsPath: "./exports",
+  localFilesPath: "./files",
   environments: {
     stag: defineRunnerEnv({
       project: "my-project-stag",
-      exportsPath: "gs://my-project-stag-exports",
+      filesPath: "gs://my-project-stag-files",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
-      exportsPath: "gs://my-project-prod-exports",
+      filesPath: "gs://my-project-prod-files",
     }),
   },
 });
 ```
 
-Local paths on an environment's `exportsPath` are only honoured when `localExportsPath` is unset and the run is local. Cloud deployments always require a `gs://` URI — using a local path for `job cloud run/deploy` fails with a clear error so the misconfiguration can't be shipped.
+Local paths on an environment's `filesPath` are only honoured when `localFilesPath` is unset and the run is local. Cloud deployments always require a `gs://` URI — using a local path for `job cloud run/deploy` fails with a clear error so the misconfiguration can't be shipped.
 
-When neither `localExportsPath` nor `exportsPath` is set, `getExportsWriter()` throws. See [Writing Exports](./exports) for the handler-side API.
+When neither `localFilesPath` nor `filesPath` is set, `getFileWriter()` and `getFilesPath()` throw. See [Files](./files) for the handler-side API.
 
 ## Environment Variable Precedence
 

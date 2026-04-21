@@ -15,19 +15,21 @@ export interface RunnerEnvOptions {
   /** Secret names to load from GCP Secret Manager */
   secrets?: string[];
   /**
-   * Destination for artifacts written via `getExportsWriter()`.
+   * Destination for files written via `getFileWriter()` and read via
+   * `getFilesPath()`.
    *
    * Either a local path (resolved relative to the service directory) or a
    * `gs://bucket[/prefix]` URI. For most setups this is a `gs://` URI — one
-   * per environment — paired with a top-level `localExportsPath` that
+   * per environment — paired with a top-level `localFilesPath` that
    * catches every local run regardless of which environment is selected.
    *
-   * When unset, `getExportsWriter()` throws (unless `localExportsPath` is
-   * set and the run is local). Cloud deployments require a `gs://` URI.
+   * When unset, `getFileWriter()` and `getFilesPath()` throw (unless
+   * `localFilesPath` is set and the run is local). Cloud deployments
+   * require a `gs://` URI.
    *
-   * @see RunnerConfig.localExportsPath
+   * @see RunnerConfig.localFilesPath
    */
-  exportsPath?: string;
+  filesPath?: string;
 }
 
 /** Container resource limits for a Cloud Run Job */
@@ -90,16 +92,17 @@ export interface RunnerConfig {
   /** Named environments (e.g., stag, prod) */
   environments: Record<string, RunnerEnvOptions>;
   /**
-   * Destination used by `getExportsWriter()` for every local run, regardless
-   * of which environment is selected. Resolved relative to the service
-   * directory; `gs://bucket[/prefix]` URIs are also accepted.
+   * Destination used by `getFileWriter()` / `getFilesPath()` for every
+   * local run, regardless of which environment is selected. Resolved
+   * relative to the service directory; `gs://bucket[/prefix]` URIs are
+   * also accepted.
    *
-   * When set, local runs ignore the environment's `exportsPath`. When unset,
-   * local runs fall back to the environment's `exportsPath`.
+   * When set, local runs ignore the environment's `filesPath`. When unset,
+   * local runs fall back to the environment's `filesPath`.
    *
-   * Cloud runs always use the environment's `exportsPath`.
+   * Cloud runs always use the environment's `filesPath`.
    */
-  localExportsPath?: string;
+  localFilesPath?: string;
   /** Cloud Run Jobs configuration (required for `job cloud run/deploy` commands) */
   cloud?: CloudConfig;
   /**
@@ -121,17 +124,17 @@ export function defineRunnerEnv(options: RunnerEnvOptions): RunnerEnvOptions {
 }
 
 /**
- * Resolve the exports destination for a local run. Prefers the top-level
- * `localExportsPath` over the environment's `exportsPath`. Local paths are
+ * Resolve the files destination for a local run. Prefers the top-level
+ * `localFilesPath` over the environment's `filesPath`. Local paths are
  * resolved against the service directory; `gs://` URIs pass through
  * unchanged.
  */
-export function resolveLocalExportsPath(
-  config: Pick<RunnerConfig, "localExportsPath">,
-  envConfig: Pick<RunnerEnvOptions, "exportsPath">,
+export function resolveLocalFilesPath(
+  config: Pick<RunnerConfig, "localFilesPath">,
+  envConfig: Pick<RunnerEnvOptions, "filesPath">,
   serviceDirectory: string,
 ): string | undefined {
-  const raw = config.localExportsPath ?? envConfig.exportsPath;
+  const raw = config.localFilesPath ?? envConfig.filesPath;
   if (!raw) return undefined;
   return raw.startsWith("gs://") ? raw : path.resolve(serviceDirectory, raw);
 }

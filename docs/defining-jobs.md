@@ -259,24 +259,24 @@ export default defineJob({
 });
 ```
 
-## Writing Exports
+## File I/O
 
-Jobs that produce artifacts (reports, exports, generated files) can use `getExportsWriter()` to write JSON, CSV, or binary content to a destination configured per environment — a local directory during development, a Cloud Storage bucket in production.
+Jobs that produce or consume files (reports, exports, fixtures, prior outputs) can use `getFileWriter()` to write JSON, CSV, or binary content and `getFilesPath()` to locate files for reading. The destination is configured per environment — a local directory during development, a Cloud Storage bucket in production.
 
 ```typescript
-import { defineJob, getExportsWriter } from "gcp-job-runner";
+import { defineJob, getFileWriter } from "gcp-job-runner";
 
 export default defineJob({
   description: "Export pending comments",
   handler: async () => {
-    const exports = getExportsWriter();
-    await exports.writeJson("pending-comments.json", rows);
-    await exports.writeText("pending-comments.csv", csvString);
+    const files = getFileWriter();
+    await files.writeJson("pending-comments.json", rows);
+    await files.writeText("pending-comments.csv", csvString);
   },
 });
 ```
 
-See [Writing Exports](./exports) for the full API and configuration details.
+See [File I/O](./files) for the full API and configuration details.
 
 ## Metadata and Discovery
 

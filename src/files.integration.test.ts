@@ -3,38 +3,38 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defineJob } from "./define-job";
-import { getExportsWriter } from "./exports";
+import { getFileWriter } from "./files";
 
 /**
  * Exercises the full public-API path a job author would use: `defineJob`
- * composes the handler, the runner sets `JOB_EXPORTS_PATH` (simulated here),
- * and the handler writes files via `getExportsWriter`. Catches regressions
+ * composes the handler, the runner sets `JOB_FILES_PATH` (simulated here),
+ * and the handler writes files via `getFileWriter`. Catches regressions
  * where the two pieces are individually correct but don't compose.
  */
-describe("exports integration", () => {
+describe("files integration", () => {
   let tempDir: string;
-  const originalExportsPath = process.env.JOB_EXPORTS_PATH;
+  const originalFilesPath = process.env.JOB_FILES_PATH;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(path.join(os.tmpdir(), "exports-integration-"));
-    process.env.JOB_EXPORTS_PATH = tempDir;
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "files-integration-"));
+    process.env.JOB_FILES_PATH = tempDir;
   });
 
   afterEach(() => {
     rmSync(tempDir, { recursive: true, force: true });
-    if (originalExportsPath === undefined) {
-      delete process.env.JOB_EXPORTS_PATH;
+    if (originalFilesPath === undefined) {
+      delete process.env.JOB_FILES_PATH;
     } else {
-      process.env.JOB_EXPORTS_PATH = originalExportsPath;
+      process.env.JOB_FILES_PATH = originalFilesPath;
     }
   });
 
-  it("writes artifacts from inside a defineJob handler", async () => {
+  it("writes files from inside a defineJob handler", async () => {
     const job = defineJob({
       handler: async () => {
-        const exports = getExportsWriter();
-        await exports.writeJson("report.json", { count: 42 });
-        await exports.writeText("report.csv", "id,count\n1,42\n");
+        const files = getFileWriter();
+        await files.writeJson("report.json", { count: 42 });
+        await files.writeText("report.csv", "id,count\n1,42\n");
       },
     });
 
@@ -49,22 +49,22 @@ describe("exports integration", () => {
   });
 
   it("surfaces config errors to the handler caller", async () => {
-    delete process.env.JOB_EXPORTS_PATH;
+    delete process.env.JOB_FILES_PATH;
 
     const job = defineJob({
       handler: async () => {
-        getExportsWriter();
+        getFileWriter();
       },
     });
 
-    await expect(job([], "missing-config")).rejects.toThrow(/exportsPath/);
+    await expect(job([], "missing-config")).rejects.toThrow(/filesPath/);
   });
 
   it("writes to nested directories declared in the relative path", async () => {
     const job = defineJob({
       handler: async () => {
-        const exports = getExportsWriter();
-        await exports.writeJson("db/airlines/UA.json", { iata: "UA" });
+        const files = getFileWriter();
+        await files.writeJson("db/airlines/UA.json", { iata: "UA" });
       },
     });
 
