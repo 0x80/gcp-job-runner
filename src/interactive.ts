@@ -86,6 +86,7 @@ export async function selectJob(jobsDirectory: string): Promise<string> {
     const selection = await consola.prompt(prompt, {
       type: "select",
       options: choices,
+      cancel: "symbol",
     });
 
     if (typeof selection === "symbol") {
@@ -162,6 +163,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       type: "select",
       options,
       initial: info.defaultValue as string,
+      cancel: "symbol",
     });
 
     if (typeof result === "symbol") {
@@ -177,6 +179,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
     const result = await consola.prompt(message, {
       type: "confirm",
       initial: (info.defaultValue as boolean) ?? false,
+      cancel: "symbol",
     });
 
     if (typeof result === "symbol") {
@@ -200,6 +203,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
         initial: info.defaultValue
           ? (info.defaultValue as unknown[]).join(", ")
           : "",
+        cancel: "symbol",
       });
 
       if (typeof result === "symbol") {
@@ -231,6 +235,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
       const result = await consola.prompt(message, {
         type: "text",
         initial: initialValue,
+        cancel: "symbol",
       });
 
       if (typeof result === "symbol") {
@@ -256,6 +261,7 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
     const result = await consola.prompt(message, {
       type: "text",
       initial: (info.defaultValue as string) ?? "",
+      cancel: "symbol",
     });
 
     if (typeof result === "symbol") {

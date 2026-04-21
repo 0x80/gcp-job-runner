@@ -128,6 +128,7 @@ export async function prepareImage(
                 hint: "build remotely instead",
               },
             ],
+            cancel: "symbol",
           },
         );
 
