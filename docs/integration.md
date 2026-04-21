@@ -87,11 +87,13 @@ export default defineRunnerConfig({
       project: "my-project-stag",
       env: { LOG_LEVEL: "debug" },
       secrets: ["STRIPE_SECRET_KEY", "SENDGRID_API_KEY"],
+      exportsPath: "gs://my-project-stag-exports",
     }),
     prod: defineRunnerEnv({
       project: "my-project-prod",
       env: { LOG_LEVEL: "info" },
       secrets: ["STRIPE_SECRET_KEY", "SENDGRID_API_KEY"],
+      exportsPath: "gs://my-project-prod-exports",
     }),
   },
   cloud: {
@@ -99,6 +101,8 @@ export default defineRunnerConfig({
   },
 });
 ```
+
+`exportsPath` is optional and only needed if your jobs call [`getExportsWriter()`](./exports) to produce artifacts. For a local-only environment, use a relative path such as `"./exports"` instead of a bucket URI.
 
 ## Secrets
 

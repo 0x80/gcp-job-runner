@@ -1,6 +1,8 @@
 export { defineRunnerConfig, defineRunnerEnv } from "./config";
 export { defineJob } from "./define-job";
 export { discoverJobs } from "./discover-jobs";
+export { getExportsWriter } from "./exports";
+export type { ExportsWriter } from "./exports";
 export {
   extractFieldInfo,
   formatZodError,

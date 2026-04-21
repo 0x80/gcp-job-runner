@@ -315,6 +315,17 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   /** Project always takes highest precedence */
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
+  /**
+   * Resolve local exportsPath values against the service directory so jobs
+   * can use consistent relative config (e.g. "./exports") from any cwd.
+   * `gs://` URIs pass through unchanged.
+   */
+  if (envConfig.exportsPath) {
+    process.env.JOB_EXPORTS_PATH = envConfig.exportsPath.startsWith("gs://")
+      ? envConfig.exportsPath
+      : path.resolve(process.cwd(), envConfig.exportsPath);
+  }
+
   if (envConfig.secrets && envConfig.secrets.length > 0) {
     const secrets = await getSecrets(envConfig.secrets);
     for (const [key, value] of Object.entries(secrets)) {
@@ -385,6 +396,8 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
     process.exit(1);
   }
 
+  assertCloudExportsPath(envConfig);
+
   const serviceDirectory = process.cwd();
 
   const { imageUri } = await prepareImage({
@@ -395,6 +408,22 @@ async function handleCloudDeploy(options: CloudDeployOptions): Promise<void> {
 
   consola.info(`Image: ${imageUri}`);
   consola.success("Deploy complete");
+}
+
+/**
+ * Reject local exportsPath values for cloud commands — they would silently
+ * write to a container filesystem that is discarded on task exit.
+ */
+function assertCloudExportsPath(
+  envConfig: RunnerConfig["environments"][string],
+): void {
+  if (envConfig.exportsPath && !envConfig.exportsPath.startsWith("gs://")) {
+    consola.error(
+      `exportsPath "${envConfig.exportsPath}" is a local path but this is a cloud command.\n` +
+        "Use a gs:// URI for cloud environments (e.g. gs://my-bucket/exports).",
+    );
+    process.exit(1);
+  }
 }
 
 interface CloudRunOptions {
@@ -431,6 +460,8 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
     );
     process.exit(1);
   }
+
+  assertCloudExportsPath(envConfig);
 
   /** Override parallelism from CLI flag */
   if (parallelism !== undefined) {

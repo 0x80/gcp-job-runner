@@ -368,6 +368,14 @@ export async function createOrUpdateJob(
     GOOGLE_CLOUD_PROJECT: project,
   };
 
+  /**
+   * Forward the exports destination to the container. Local paths are
+   * rejected earlier by assertCloudExportsPath() in the CLI handlers.
+   */
+  if (envConfig.exportsPath) {
+    envVars.JOB_EXPORTS_PATH = envConfig.exportsPath;
+  }
+
   const envVarsString = Object.entries(envVars)
     .map(([key, value]) => `${key}=${value}`)
     .join(",");

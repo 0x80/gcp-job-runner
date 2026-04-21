@@ -44,6 +44,7 @@ Same code, same arguments, same secrets. The cloud command automatically builds 
 - **Cloud Run deployment** — no Terraform or manual GCP config needed, just `job cloud run`
 - **Smart caching** — a single Docker image contains all jobs; running different jobs or different arguments doesn't rebuild
 - **GCP Secret Manager** — secrets are loaded transparently for both local and cloud execution
+- **Unified artifact output** — `getExportsWriter()` writes JSON/CSV/binary to a local directory during development and to a Cloud Storage bucket in production, with the same handler code
 - **Multi-environment** — configure staging, production, etc. and switch with a single argument
 
 ## Install
