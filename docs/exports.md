@@ -18,20 +18,28 @@ export default defineJob({
 });
 ```
 
-The writer reads its destination from the `exportsPath` you set in your [runner config](./configuration#exportspath). Each environment can point at a different destination — typically a local path for development and a `gs://` URI for staging and production.
+The writer reads its destination from your [runner config](./configuration). For most setups you'll pair a top-level [`localExportsPath`](./configuration#localexportspath) — used for every local run regardless of environment — with a per-environment [`exportsPath`](./configuration#exportspath) used for cloud execution:
 
 ```typescript
-environments: {
-  local: defineRunnerEnv({
-    project: "my-project-dev",
-    exportsPath: "./exports",
-  }),
-  stag: defineRunnerEnv({
-    project: "my-project-stag",
-    exportsPath: "gs://my-project-stag-exports",
-  }),
-},
+// job-runner.config.ts
+import { defineRunnerConfig, defineRunnerEnv } from "gcp-job-runner";
+
+export default defineRunnerConfig({
+  localExportsPath: "./exports",
+  environments: {
+    stag: defineRunnerEnv({
+      project: "my-project-stag",
+      exportsPath: "gs://my-project-stag-exports",
+    }),
+    prod: defineRunnerEnv({
+      project: "my-project-prod",
+      exportsPath: "gs://my-project-prod-exports",
+    }),
+  },
+});
 ```
+
+`localExportsPath` is optional — if you prefer to configure a destination per environment, just set `exportsPath` on each env and leave `localExportsPath` unset.
 
 ## API
 
@@ -100,12 +108,12 @@ The `@google-cloud/storage` module is lazy-loaded — jobs that only ever write 
 
 ## Missing Configuration
 
-If a job calls `getExportsWriter()` without `exportsPath` set for the active environment, the call throws immediately with a message pointing at the config key. Choose the opt-in explicitly per environment rather than relying on implicit defaults.
+If a job calls `getExportsWriter()` without a destination configured — neither `localExportsPath` nor the active environment's `exportsPath` is set — the call throws immediately with a message pointing at the config key. Choose the opt-in explicitly rather than relying on implicit defaults.
 
 ```
 Error: No exports destination configured.
-Set `exportsPath` on the current environment in your job-runner.config.ts,
-or set JOB_EXPORTS_PATH directly in the environment.
+Set `localExportsPath` or the current environment's `exportsPath` in your
+job-runner.config.ts, or set JOB_EXPORTS_PATH directly in the environment.
 ```
 
 ## Cloud Deployment Safety

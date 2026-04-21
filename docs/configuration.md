@@ -46,6 +46,12 @@ interface RunnerConfig {
   /** Named environments (e.g., stag, prod) */
   environments: Record<string, RunnerEnvOptions>;
 
+  /**
+   * Destination used by getExportsWriter() for every local run, regardless
+   * of which environment is selected. Local path or gs:// URI.
+   */
+  localExportsPath?: string;
+
   /** Cloud Run Jobs configuration */
   cloud?: CloudConfig;
 
@@ -90,6 +96,35 @@ export default defineRunnerConfig({
 ```
 
 Build output is hidden to keep the terminal clean — you'll see a "Building..." indicator. If the build fails, the full output is displayed.
+
+### `localExportsPath`
+
+A destination used by [`getExportsWriter()`](./exports) for every local run, regardless of which environment is selected. Either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
+
+```typescript
+export default defineRunnerConfig({
+  localExportsPath: "./exports",
+  environments: {
+    stag: defineRunnerEnv({
+      project: "my-project-stag",
+      exportsPath: "gs://my-project-stag-exports",
+    }),
+    prod: defineRunnerEnv({
+      project: "my-project-prod",
+      exportsPath: "gs://my-project-prod-exports",
+    }),
+  },
+});
+```
+
+When running jobs locally, the selected environment still controls which project's data you read or write — but the _destination_ for artifacts is usually the same developer machine. `localExportsPath` captures that: one top-level setting instead of per-env duplication.
+
+When `localExportsPath` is set:
+
+- Local runs (`job local run <env>`) use `localExportsPath` and ignore the environment's `exportsPath`.
+- Cloud runs (`job cloud run <env>` / `job cloud deploy <env>`) use the environment's `exportsPath` as before.
+
+When `localExportsPath` is unset, local runs fall back to the environment's `exportsPath` — existing configurations continue to work unchanged.
 
 ### `cloud`
 
@@ -201,28 +236,29 @@ An array of secret names to load from GCP Secret Manager. The secrets are loaded
 
 ### `exportsPath`
 
-Destination for artifacts written via [`getExportsWriter()`](./exports). Accepts either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI. Typically set per environment — a local directory for development, a bucket for cloud deployments.
+Destination for artifacts written via [`getExportsWriter()`](./exports) for this environment. Accepts either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI.
+
+For most setups this is a `gs://` URI per environment, paired with a top-level [`localExportsPath`](#localexportspath) that handles every local run:
 
 ```typescript
-environments: {
-  local: defineRunnerEnv({
-    project: "my-project-dev",
-    exportsPath: "./exports",
-  }),
-  stag: defineRunnerEnv({
-    project: "my-project-stag",
-    exportsPath: "gs://my-project-stag-exports",
-  }),
-  prod: defineRunnerEnv({
-    project: "my-project-prod",
-    exportsPath: "gs://my-project-prod-exports",
-  }),
-},
+export default defineRunnerConfig({
+  localExportsPath: "./exports",
+  environments: {
+    stag: defineRunnerEnv({
+      project: "my-project-stag",
+      exportsPath: "gs://my-project-stag-exports",
+    }),
+    prod: defineRunnerEnv({
+      project: "my-project-prod",
+      exportsPath: "gs://my-project-prod-exports",
+    }),
+  },
+});
 ```
 
-Local paths are only honoured when running locally. Cloud deployments require a `gs://` URI — using a local path for `job cloud run/deploy` fails with a clear error so the misconfiguration can't be shipped.
+Local paths on an environment's `exportsPath` are only honoured when `localExportsPath` is unset and the run is local. Cloud deployments always require a `gs://` URI — using a local path for `job cloud run/deploy` fails with a clear error so the misconfiguration can't be shipped.
 
-When `exportsPath` is unset, `getExportsWriter()` throws. See [Writing Exports](./exports) for the handler-side API.
+When neither `localExportsPath` nor `exportsPath` is set, `getExportsWriter()` throws. See [Writing Exports](./exports) for the handler-side API.
 
 ## Environment Variable Precedence
 

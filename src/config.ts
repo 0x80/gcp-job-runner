@@ -1,3 +1,5 @@
+import path from "node:path";
+
 /** Environment configuration for a specific deployment target */
 export interface RunnerEnvOptions {
   /** GCP project ID — sets GOOGLE_CLOUD_PROJECT automatically */
@@ -16,11 +18,14 @@ export interface RunnerEnvOptions {
    * Destination for artifacts written via `getExportsWriter()`.
    *
    * Either a local path (resolved relative to the service directory) or a
-   * `gs://bucket[/prefix]` URI. Typically set per environment — e.g. a local
-   * directory for development and a bucket for cloud deployments.
+   * `gs://bucket[/prefix]` URI. For most setups this is a `gs://` URI — one
+   * per environment — paired with a top-level `localExportsPath` that
+   * catches every local run regardless of which environment is selected.
    *
-   * When unset, `getExportsWriter()` throws. Local paths are only applied when
-   * running locally; cloud deployments require a `gs://` URI.
+   * When unset, `getExportsWriter()` throws (unless `localExportsPath` is
+   * set and the run is local). Cloud deployments require a `gs://` URI.
+   *
+   * @see RunnerConfig.localExportsPath
    */
   exportsPath?: string;
 }
@@ -84,6 +89,17 @@ export interface RunnerConfig {
   };
   /** Named environments (e.g., stag, prod) */
   environments: Record<string, RunnerEnvOptions>;
+  /**
+   * Destination used by `getExportsWriter()` for every local run, regardless
+   * of which environment is selected. Resolved relative to the service
+   * directory; `gs://bucket[/prefix]` URIs are also accepted.
+   *
+   * When set, local runs ignore the environment's `exportsPath`. When unset,
+   * local runs fall back to the environment's `exportsPath`.
+   *
+   * Cloud runs always use the environment's `exportsPath`.
+   */
+  localExportsPath?: string;
   /** Cloud Run Jobs configuration (required for `job cloud run/deploy` commands) */
   cloud?: CloudConfig;
   /**
@@ -102,4 +118,20 @@ export function defineRunnerConfig(config: RunnerConfig): RunnerConfig {
 /** Identity function for type-safe environment definition */
 export function defineRunnerEnv(options: RunnerEnvOptions): RunnerEnvOptions {
   return options;
+}
+
+/**
+ * Resolve the exports destination for a local run. Prefers the top-level
+ * `localExportsPath` over the environment's `exportsPath`. Local paths are
+ * resolved against the service directory; `gs://` URIs pass through
+ * unchanged.
+ */
+export function resolveLocalExportsPath(
+  config: Pick<RunnerConfig, "localExportsPath">,
+  envConfig: Pick<RunnerEnvOptions, "exportsPath">,
+  serviceDirectory: string,
+): string | undefined {
+  const raw = config.localExportsPath ?? envConfig.exportsPath;
+  if (!raw) return undefined;
+  return raw.startsWith("gs://") ? raw : path.resolve(serviceDirectory, raw);
 }

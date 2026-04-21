@@ -5,7 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape } from "zod";
-import type { RunnerConfig } from "./config";
+import { resolveLocalExportsPath, type RunnerConfig } from "./config";
 import {
   createOrUpdateJob,
   deployIfChanged,
@@ -316,14 +316,17 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
   /**
-   * Resolve local exportsPath values against the service directory so jobs
-   * can use consistent relative config (e.g. "./exports") from any cwd.
-   * `gs://` URIs pass through unchanged.
+   * `localExportsPath` wins over the environment's `exportsPath` for local
+   * runs so developers can use one destination regardless of whether they
+   * point at stag or prod data.
    */
-  if (envConfig.exportsPath) {
-    process.env.JOB_EXPORTS_PATH = envConfig.exportsPath.startsWith("gs://")
-      ? envConfig.exportsPath
-      : path.resolve(process.cwd(), envConfig.exportsPath);
+  const localExportsPath = resolveLocalExportsPath(
+    config,
+    envConfig,
+    process.cwd(),
+  );
+  if (localExportsPath !== undefined) {
+    process.env.JOB_EXPORTS_PATH = localExportsPath;
   }
 
   if (envConfig.secrets && envConfig.secrets.length > 0) {
