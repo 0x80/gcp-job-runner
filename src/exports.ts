@@ -69,8 +69,12 @@ function createLocalWriter(basePath: string): ExportsWriter {
   }
 
   return {
-    writeJson(relativePath, data) {
-      const withExtension = ensureExtension(relativePath, ".json");
+    async writeJson(relativePath, data) {
+      /** Sanitize before appending the extension so "" doesn't become ".json". */
+      const withExtension = ensureExtension(
+        sanitizeRelativePath(relativePath),
+        ".json",
+      );
       return write(withExtension, formatJson(data));
     },
     writeText(relativePath, content) {
@@ -117,8 +121,12 @@ function createGcsWriter(uri: string): ExportsWriter {
   }
 
   return {
-    writeJson(relativePath, data) {
-      const withExtension = ensureExtension(relativePath, ".json");
+    async writeJson(relativePath, data) {
+      /** Sanitize before appending the extension so "" doesn't become ".json". */
+      const withExtension = ensureExtension(
+        sanitizeRelativePath(relativePath),
+        ".json",
+      );
       return write(withExtension, formatJson(data), "application/json");
     },
     writeText(relativePath, content) {

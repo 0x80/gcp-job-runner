@@ -132,6 +132,10 @@ describe("getExportsWriter", () => {
     it("rejects empty paths", async () => {
       const writer = getExportsWriter();
       await expect(writer.writeText("", "x")).rejects.toThrow(/empty/);
+      await expect(writer.writeBuffer("", Buffer.from("x"))).rejects.toThrow(
+        /empty/,
+      );
+      await expect(writer.writeJson("", { ok: true })).rejects.toThrow(/empty/);
     });
 
     it("resolves relative base path to absolute", async () => {
