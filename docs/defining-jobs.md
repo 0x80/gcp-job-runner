@@ -259,6 +259,25 @@ export default defineJob({
 });
 ```
 
+## Writing Exports
+
+Jobs that produce artifacts (reports, exports, generated files) can use `getExportsWriter()` to write JSON, CSV, or binary content to a destination configured per environment — a local directory during development, a Cloud Storage bucket in production.
+
+```typescript
+import { defineJob, getExportsWriter } from "gcp-job-runner";
+
+export default defineJob({
+  description: "Export pending comments",
+  handler: async () => {
+    const exports = getExportsWriter();
+    await exports.writeJson("pending-comments.json", rows);
+    await exports.writeText("pending-comments.csv", csvString);
+  },
+});
+```
+
+See [Writing Exports](./exports) for the full API and configuration details.
+
 ## Metadata and Discovery
 
 `defineJob()` attaches a `__metadata` property to the returned function containing the `description`. This is used by the job discovery system when listing available jobs.

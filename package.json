@@ -42,6 +42,7 @@
   "dependencies": {
     "@google-cloud/logging": "^11.2.0",
     "@google-cloud/secret-manager": "^6.1.1",
+    "@google-cloud/storage": "^7.19.0",
     "consola": "^3.4.0",
     "execa": "^9.6.1",
     "isolate-package": "1.28.2",

@@ -12,6 +12,17 @@ export interface RunnerEnvOptions {
   env?: Record<string, string>;
   /** Secret names to load from GCP Secret Manager */
   secrets?: string[];
+  /**
+   * Destination for artifacts written via `getExportsWriter()`.
+   *
+   * Either a local path (resolved relative to the service directory) or a
+   * `gs://bucket[/prefix]` URI. Typically set per environment — e.g. a local
+   * directory for development and a bucket for cloud deployments.
+   *
+   * When unset, `getExportsWriter()` throws. Local paths are only applied when
+   * running locally; cloud deployments require a `gs://` URI.
+   */
+  exportsPath?: string;
 }
 
 /** Container resource limits for a Cloud Run Job */

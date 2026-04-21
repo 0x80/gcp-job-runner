@@ -315,6 +315,17 @@ async function handleLocalRun(options: LocalRunOptions): Promise<void> {
   /** Project always takes highest precedence */
   process.env.GOOGLE_CLOUD_PROJECT = envConfig.project;
 
+  /**
+   * Resolve local exportsPath values against the service directory so jobs
+   * can use consistent relative config (e.g. "./exports") from any cwd.
+   * `gs://` URIs pass through unchanged.
+   */
+  if (envConfig.exportsPath) {
+    process.env.JOB_EXPORTS_PATH = envConfig.exportsPath.startsWith("gs://")
+      ? envConfig.exportsPath
+      : path.resolve(process.cwd(), envConfig.exportsPath);
+  }
+
   if (envConfig.secrets && envConfig.secrets.length > 0) {
     const secrets = await getSecrets(envConfig.secrets);
     for (const [key, value] of Object.entries(secrets)) {

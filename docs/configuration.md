@@ -158,6 +158,9 @@ interface RunnerEnvOptions {
 
   /** Secret names to load from GCP Secret Manager */
   secrets?: string[];
+
+  /** Destination for artifacts written via getExportsWriter() */
+  exportsPath?: string;
 }
 ```
 
@@ -195,6 +198,31 @@ Additional environment variables to set. These override any values loaded from `
 ### `secrets`
 
 An array of secret names to load from GCP Secret Manager. The secrets are loaded identically for both local and cloud execution — the execution environment is transparent.
+
+### `exportsPath`
+
+Destination for artifacts written via [`getExportsWriter()`](./exports). Accepts either a local path (resolved relative to the service directory) or a `gs://bucket[/prefix]` URI. Typically set per environment — a local directory for development, a bucket for cloud deployments.
+
+```typescript
+environments: {
+  local: defineRunnerEnv({
+    project: "my-project-dev",
+    exportsPath: "./exports",
+  }),
+  stag: defineRunnerEnv({
+    project: "my-project-stag",
+    exportsPath: "gs://my-project-stag-exports",
+  }),
+  prod: defineRunnerEnv({
+    project: "my-project-prod",
+    exportsPath: "gs://my-project-prod-exports",
+  }),
+},
+```
+
+Local paths are only honoured when running locally. Cloud deployments require a `gs://` URI — using a local path for `job cloud run/deploy` fails with a clear error so the misconfiguration can't be shipped.
+
+When `exportsPath` is unset, `getExportsWriter()` throws. See [Writing Exports](./exports) for the handler-side API.
 
 ## Environment Variable Precedence
 
