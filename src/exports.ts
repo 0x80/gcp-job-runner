@@ -182,7 +182,12 @@ function sanitizeRelativePath(relativePath: string): string {
 
   const normalized = path.posix.normalize(relativePath.replace(/\\/g, "/"));
 
-  if (normalized.startsWith("..") || normalized.split("/").includes("..")) {
+  /**
+   * Reject `..` only as a distinct path segment, not as a prefix. A filename
+   * like "..hidden" is a legitimate dotfile variant, while ".." / "../x" /
+   * "a/../../x" all produce a `..` segment after normalization.
+   */
+  if (normalized.split("/").includes("..")) {
     throw new Error(
       `Export path must not traverse upward, got "${relativePath}".`,
     );

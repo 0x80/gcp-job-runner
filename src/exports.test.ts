@@ -117,6 +117,16 @@ describe("getExportsWriter", () => {
       await expect(
         writer.writeText("a/../../escape.txt", "pwned"),
       ).rejects.toThrow(/must not traverse upward/);
+      await expect(writer.writeText("..", "pwned")).rejects.toThrow(
+        /must not traverse upward/,
+      );
+    });
+
+    it("allows filenames that start with two dots", async () => {
+      const writer = getExportsWriter();
+      const fullPath = await writer.writeText("..hidden", "ok");
+      expect(fullPath).toBe(path.join(tempDir, "..hidden"));
+      expect(readFileSync(fullPath, "utf-8")).toBe("ok");
     });
 
     it("rejects empty paths", async () => {
