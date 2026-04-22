@@ -558,6 +558,15 @@ describe("readInputText / readInputJson / readInputBuffer (local)", () => {
     delete process.env.JOB_INPUT_FILES_PATH;
     await expect(readInputText("notes.txt")).rejects.toThrow(/inputFilesPath/);
   });
+
+  it("throws the standard unconfigured error when JOB_INPUT_FILES_PATH is empty", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "";
+    await expect(readInputText("notes.txt")).rejects.toThrow(/inputFilesPath/);
+    await expect(readInputJson("notes.txt")).rejects.toThrow(/inputFilesPath/);
+    await expect(readInputBuffer("notes.txt")).rejects.toThrow(
+      /inputFilesPath/,
+    );
+  });
 });
 
 describe("readInputText / readInputJson / readInputBuffer (gcs)", () => {

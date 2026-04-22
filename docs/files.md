@@ -96,7 +96,7 @@ For formats the library doesn't ship a helper for (e.g. CSV), read the text and 
 import { readInputText } from "gcp-job-runner";
 import Papa from "papaparse";
 
-const rows = Papa.parse(await readInputText("users.csv"), { header: true });
+const rows = Papa.parse(await readInputText("users.csv"), { header: true }).data;
 ```
 
 ### Streaming or Custom Access
