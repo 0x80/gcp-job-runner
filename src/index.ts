@@ -1,7 +1,13 @@
 export { defineRunnerConfig, defineRunnerEnv } from "./config";
 export { defineJob } from "./define-job";
 export { discoverJobs } from "./discover-jobs";
-export { getFileWriter, getInputFilesPath, getOutputFilesPath } from "./files";
+export {
+  fileInput,
+  getFileWriter,
+  getInputFilesPath,
+  getOutputFilesPath,
+  listInputFiles,
+} from "./files";
 export type { FileWriter } from "./files";
 export {
   extractFieldInfo,

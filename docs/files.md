@@ -79,6 +79,35 @@ export default defineRunnerConfig({
 
 For `gs://` destinations, use `@google-cloud/storage` directly to fetch objects under the prefix — the library intentionally stays out of the read path so you can stream, list, and filter as your job needs.
 
+### Picking Files Interactively
+
+Mark a schema field with `fileInput()` to turn it into a picker in `--interactive` mode. Interactive runs list the files under the configured `inputFilesPath` (local `readdir` or `gs://` bucket list) and present them as a select prompt instead of asking for a free-text path:
+
+```typescript
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { z } from "zod";
+import { defineJob, fileInput, getInputFilesPath } from "gcp-job-runner";
+
+export default defineJob({
+  description: "Process a CSV from the input directory",
+  schema: z.object({
+    file: fileInput().describe("CSV to process"),
+  }),
+  handler: async ({ file }) => {
+    const base = getInputFilesPath();
+    const raw = await readFile(path.join(base, file), "utf-8");
+    // ...
+  },
+});
+```
+
+Run it with `job local run <env> <job> --interactive` and the `--file` prompt becomes a scrollable list of files in the configured input directory. `fileInput()` chains with `.optional()`, `.default()`, and `.describe()` as usual.
+
+When the destination is a `gs://` URI, the picker uses a lazy `@google-cloud/storage` list — it authenticates with Application Default Credentials on the local machine running the prompt. An empty directory or missing config falls back to a free-text prompt with a warning so the flow isn't blocked.
+
+`listInputFiles()` is also exported if you need the same listing outside the interactive flow.
+
 ### Reading Your Own Output
 
 `getOutputFilesPath()` returns the resolved output destination. Useful when a handler writes a file and then needs its path for a follow-up step, or when chaining steps:

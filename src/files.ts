@@ -1,6 +1,7 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { consola } from "consola";
+import { z } from "zod";
 import type { Storage } from "@google-cloud/storage";
 
 /**
@@ -72,6 +73,72 @@ export function getFileWriter(): FileWriter {
   }
 
   return createLocalWriter(destination);
+}
+
+/**
+ * Mark a Zod string field as a file input. Interactive mode detects this
+ * marker and offers a selectable list of files from `getInputFilesPath()`
+ * instead of a free-text prompt.
+ *
+ * ```ts
+ * z.object({
+ *   file: fileInput().describe("CSV to process"),
+ * });
+ * ```
+ *
+ * Chains with `.describe()`, `.optional()`, `.default()` as usual.
+ */
+export function fileInput() {
+  return z.string().meta({ kind: "file" });
+}
+
+/**
+ * List filenames available under the configured input files destination.
+ * Returns names relative to the destination directory (no leading slash).
+ * Results are sorted alphabetically.
+ *
+ * Local destinations list only top-level files (nested directories are
+ * skipped for now). `gs://` destinations list every object under the
+ * configured prefix.
+ *
+ * Throws when no input destination is configured.
+ */
+export async function listInputFiles(): Promise<string[]> {
+  const destination = readInputDestination();
+  if (destination.startsWith(GCS_PREFIX)) {
+    return listGcsFiles(destination);
+  }
+  return listLocalFiles(path.resolve(destination));
+}
+
+async function listLocalFiles(basePath: string): Promise<string[]> {
+  const entries = await readdir(basePath, { withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name)
+    .sort();
+}
+
+async function listGcsFiles(uri: string): Promise<string[]> {
+  const { bucket, prefix } = parseGcsUri(uri);
+
+  /**
+   * Terminate the list prefix with `/` so GCS treats it as a folder and
+   * not a bare substring — otherwise a configured `inputs` would also
+   * match sibling keys like `inputs2/…` or `inputs-backup/…`.
+   */
+  const listPrefix = prefix ? `${prefix}/` : undefined;
+  const stripLen = listPrefix ? listPrefix.length : 0;
+
+  const storage = await getStorageClient();
+  const [files] = await storage.bucket(bucket).getFiles({
+    prefix: listPrefix,
+  });
+
+  return files
+    .map((file) => file.name.slice(stripLen))
+    .filter((name) => name.length > 0 && !name.endsWith("/"))
+    .sort();
 }
 
 function resolveDestination(destination: string): string {

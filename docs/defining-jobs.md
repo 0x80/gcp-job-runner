@@ -276,7 +276,7 @@ export default defineJob({
 });
 ```
 
-See [File I/O](./files) for the full API and configuration details.
+Mark a schema field with `fileInput()` and interactive mode offers a selectable list of files from the configured input directory instead of a free-text prompt. See [File I/O](./files) for the full API and configuration details.
 
 ## Metadata and Discovery
 

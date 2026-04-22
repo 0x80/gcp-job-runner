@@ -1,9 +1,15 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { consola } from "consola";
-import { getFileWriter, getInputFilesPath, getOutputFilesPath } from "./files";
+import {
+  getFileWriter,
+  getInputFilesPath,
+  getOutputFilesPath,
+  listInputFiles,
+} from "./files";
 
 describe("getFileWriter", () => {
   let tempDir: string;
@@ -332,5 +338,136 @@ describe("getOutputFilesPath", () => {
   it("throws when JOB_OUTPUT_FILES_PATH is unset", () => {
     delete process.env.JOB_OUTPUT_FILES_PATH;
     expect(() => getOutputFilesPath()).toThrowError(/outputFilesPath/);
+  });
+});
+
+describe("listInputFiles (local)", () => {
+  let tempDir: string;
+  const originalInputPath = process.env.JOB_INPUT_FILES_PATH;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "list-input-files-test-"));
+    process.env.JOB_INPUT_FILES_PATH = tempDir;
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalInputPath === undefined) {
+      delete process.env.JOB_INPUT_FILES_PATH;
+    } else {
+      process.env.JOB_INPUT_FILES_PATH = originalInputPath;
+    }
+  });
+
+  it("returns sorted top-level filenames", async () => {
+    writeFileSync(path.join(tempDir, "b.txt"), "b");
+    writeFileSync(path.join(tempDir, "a.txt"), "a");
+    writeFileSync(path.join(tempDir, "c.json"), "{}");
+
+    expect(await listInputFiles()).toEqual(["a.txt", "b.txt", "c.json"]);
+  });
+
+  it("skips subdirectories", async () => {
+    writeFileSync(path.join(tempDir, "root.txt"), "x");
+    await mkdir(path.join(tempDir, "sub"));
+    writeFileSync(path.join(tempDir, "sub", "nested.txt"), "y");
+
+    expect(await listInputFiles()).toEqual(["root.txt"]);
+  });
+
+  it("returns an empty array for an empty directory", async () => {
+    expect(await listInputFiles()).toEqual([]);
+  });
+
+  it("throws when JOB_INPUT_FILES_PATH is unset", async () => {
+    delete process.env.JOB_INPUT_FILES_PATH;
+    await expect(listInputFiles()).rejects.toThrow(/inputFilesPath/);
+  });
+});
+
+describe("listInputFiles (gcs)", () => {
+  const originalInputPath = process.env.JOB_INPUT_FILES_PATH;
+  const getFilesMock = vi.fn();
+  const bucketMock = vi.fn(() => ({ getFiles: getFilesMock }));
+
+  beforeEach(() => {
+    getFilesMock.mockReset();
+    bucketMock.mockClear();
+    vi.doMock("@google-cloud/storage", () => ({
+      Storage: class {
+        bucket = bucketMock;
+      },
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock("@google-cloud/storage");
+    vi.resetModules();
+    if (originalInputPath === undefined) {
+      delete process.env.JOB_INPUT_FILES_PATH;
+    } else {
+      process.env.JOB_INPUT_FILES_PATH = originalInputPath;
+    }
+  });
+
+  it("lists objects under the configured prefix, stripped and sorted", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    getFilesMock.mockResolvedValue([
+      [
+        { name: "inputs/b.txt" },
+        { name: "inputs/a.txt" },
+        { name: "inputs/sub/nested.txt" },
+      ],
+    ]);
+
+    vi.resetModules();
+    const { listInputFiles: freshList } = await import("./files");
+    const result = await freshList();
+
+    expect(bucketMock).toHaveBeenCalledWith("my-bucket");
+    expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs/" });
+    expect(result).toEqual(["a.txt", "b.txt", "sub/nested.txt"]);
+  });
+
+  it("lists bucket-only destinations with no prefix", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket";
+    getFilesMock.mockResolvedValue([[{ name: "a.txt" }, { name: "b.txt" }]]);
+
+    vi.resetModules();
+    const { listInputFiles: freshList } = await import("./files");
+    const result = await freshList();
+
+    expect(getFilesMock).toHaveBeenCalledWith({ prefix: undefined });
+    expect(result).toEqual(["a.txt", "b.txt"]);
+  });
+
+  it("drops GCS folder-marker entries", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    getFilesMock.mockResolvedValue([
+      [{ name: "inputs/" }, { name: "inputs/a.txt" }, { name: "inputs/sub/" }],
+    ]);
+
+    vi.resetModules();
+    const { listInputFiles: freshList } = await import("./files");
+    const result = await freshList();
+
+    expect(result).toEqual(["a.txt"]);
+  });
+
+  it("passes a delimiter-terminated prefix so sibling folders are excluded", async () => {
+    /**
+     * Regression guard: `inputs` without trailing `/` would also match
+     * sibling keys like `inputs-backup/…`. The terminated prefix makes
+     * GCS scope the list to the intended folder only.
+     */
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    getFilesMock.mockResolvedValue([[{ name: "inputs/real.txt" }]]);
+
+    vi.resetModules();
+    const { listInputFiles: freshList } = await import("./files");
+    const result = await freshList();
+
+    expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs/" });
+    expect(result).toEqual(["real.txt"]);
   });
 });
