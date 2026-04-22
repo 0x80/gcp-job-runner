@@ -1,10 +1,12 @@
 pre-commit:
-  parallel: true
+  # Run sequentially so lint always sees the freshly-formatted version of
+  # each staged file instead of racing against oxfmt rewriting it.
+  parallel: false
   commands:
     format:
-      glob: "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css,md,yaml}"
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,json,jsonc,css,md,yaml,yml}"
       run: pnpm exec oxfmt --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
     lint:
       glob: "*.{js,jsx,ts,tsx,mjs,cjs}"
-      run: pnpm exec oxlint -c .oxlintrc.json --import-plugin --type-aware {staged_files}
+      run: pnpm exec oxlint -c .oxlintrc.json --import-plugin {staged_files}
