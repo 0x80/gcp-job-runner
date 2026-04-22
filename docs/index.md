@@ -70,8 +70,8 @@ features:
         <polyline points="7 10 12 15 17 10"/>
         <line x1="12" x2="12" y1="15" y2="3"/>
       </svg>
-    title: Unified Artifact Output
-    details: Write JSON, CSV, or binary artifacts with one API that targets a local directory during development and a Cloud Storage bucket in production. Same handler code.
+    title: Unified File I/O
+    details: Read and write JSON, CSV, or binary files with one API that targets a local directory during development and a Cloud Storage bucket in production. Same handler code.
 ---
 
 ## Quick Look

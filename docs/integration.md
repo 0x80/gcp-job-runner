@@ -104,7 +104,7 @@ export default defineRunnerConfig({
 });
 ```
 
-`inputFilesPath` and `outputFilesPath` are both optional and only needed if your jobs call [`getInputFilesPath()`](./files) or [`getFileWriter()` / `getOutputFilesPath()`](./files). For a local-only environment, use relative paths such as `"./input"` / `"./output"` instead of bucket URIs.
+`inputFilesPath` and `outputFilesPath` are both optional and only needed if your jobs read or write files via the [File I/O helpers](./files) (`readInputJson` / `readInputText` / `getFileWriter`, etc.). For a local-only environment, use relative paths such as `"./input"` / `"./output"` instead of bucket URIs.
 
 ## Secrets
 
