@@ -15,6 +15,10 @@ Job arguments are validated using [Zod](https://zod.dev) schemas. This page cove
 
 All of these can be combined with `.optional()`, `.default()`, and `.describe()`.
 
+### Library Helpers
+
+The library also exports `fileInput()`, which returns `z.string().meta({ kind: "file" })`. It behaves like a plain string at validation time, but is picked up by interactive mode as a select prompt over the configured input destination — see [File I/O](./files#picking-files-interactively) for the full example.
+
 ## How `parseArgs` Mapping Works
 
 The `schemaToParseArgsOptions()` function converts a Zod schema into options for Node's built-in `parseArgs`:

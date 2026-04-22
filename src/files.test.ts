@@ -9,6 +9,9 @@ import {
   getInputFilesPath,
   getOutputFilesPath,
   listInputFiles,
+  readInputBuffer,
+  readInputJson,
+  readInputText,
 } from "./files";
 
 describe("getFileWriter", () => {
@@ -469,5 +472,186 @@ describe("listInputFiles (gcs)", () => {
 
     expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs/" });
     expect(result).toEqual(["real.txt"]);
+  });
+});
+
+describe("readInputText / readInputJson / readInputBuffer (local)", () => {
+  let tempDir: string;
+  const originalInputPath = process.env.JOB_INPUT_FILES_PATH;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(path.join(os.tmpdir(), "read-input-test-"));
+    process.env.JOB_INPUT_FILES_PATH = tempDir;
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+    if (originalInputPath === undefined) {
+      delete process.env.JOB_INPUT_FILES_PATH;
+    } else {
+      process.env.JOB_INPUT_FILES_PATH = originalInputPath;
+    }
+  });
+
+  it("readInputText returns file contents decoded as UTF-8", async () => {
+    writeFileSync(path.join(tempDir, "notes.txt"), "héllo\nworld");
+    expect(await readInputText("notes.txt")).toBe("héllo\nworld");
+  });
+
+  it("readInputJson parses JSON", async () => {
+    writeFileSync(path.join(tempDir, "data.json"), '{"count":42,"ok":true}');
+    expect(await readInputJson("data.json")).toEqual({ count: 42, ok: true });
+  });
+
+  it("readInputJson preserves the generic type parameter", async () => {
+    interface Row {
+      id: number;
+    }
+    writeFileSync(path.join(tempDir, "rows.json"), '[{"id":1},{"id":2}]');
+    const rows = await readInputJson<Row[]>("rows.json");
+    expect(rows.map((row) => row.id)).toEqual([1, 2]);
+  });
+
+  it("readInputJson surfaces parse errors from malformed input", async () => {
+    writeFileSync(path.join(tempDir, "bad.json"), "{not json");
+    await expect(readInputJson("bad.json")).rejects.toThrow(SyntaxError);
+  });
+
+  it("readInputBuffer returns raw bytes unchanged", async () => {
+    const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0xff]);
+    writeFileSync(path.join(tempDir, "blob.bin"), bytes);
+    const result = await readInputBuffer("blob.bin");
+    expect(result.equals(bytes)).toBe(true);
+  });
+
+  it("resolves nested relative paths under the destination", async () => {
+    await mkdir(path.join(tempDir, "db", "airlines"), { recursive: true });
+    writeFileSync(
+      path.join(tempDir, "db", "airlines", "UA.json"),
+      '{"iata":"UA"}',
+    );
+    expect(await readInputJson("db/airlines/UA.json")).toEqual({ iata: "UA" });
+  });
+
+  it("rejects absolute paths", async () => {
+    await expect(readInputText("/etc/passwd")).rejects.toThrow(
+      /Absolute paths are not allowed/,
+    );
+  });
+
+  it("rejects upward traversal", async () => {
+    await expect(readInputText("../escape.txt")).rejects.toThrow(
+      /must not traverse upward/,
+    );
+    await expect(readInputText("a/../../escape.txt")).rejects.toThrow(
+      /must not traverse upward/,
+    );
+  });
+
+  it("rejects empty paths", async () => {
+    await expect(readInputText("")).rejects.toThrow(/empty/);
+    await expect(readInputJson("")).rejects.toThrow(/empty/);
+    await expect(readInputBuffer("")).rejects.toThrow(/empty/);
+  });
+
+  it("throws the standard unconfigured error when JOB_INPUT_FILES_PATH is unset", async () => {
+    delete process.env.JOB_INPUT_FILES_PATH;
+    await expect(readInputText("notes.txt")).rejects.toThrow(/inputFilesPath/);
+  });
+
+  it("throws the standard unconfigured error when JOB_INPUT_FILES_PATH is empty", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "";
+    await expect(readInputText("notes.txt")).rejects.toThrow(/inputFilesPath/);
+    await expect(readInputJson("notes.txt")).rejects.toThrow(/inputFilesPath/);
+    await expect(readInputBuffer("notes.txt")).rejects.toThrow(
+      /inputFilesPath/,
+    );
+  });
+});
+
+describe("readInputText / readInputJson / readInputBuffer (gcs)", () => {
+  const originalInputPath = process.env.JOB_INPUT_FILES_PATH;
+  const downloadMock = vi.fn();
+  const fileMock = vi.fn(() => ({ download: downloadMock }));
+  const bucketMock = vi.fn(() => ({ file: fileMock }));
+
+  beforeEach(() => {
+    downloadMock.mockReset();
+    fileMock.mockClear();
+    bucketMock.mockClear();
+    vi.doMock("@google-cloud/storage", () => ({
+      Storage: class {
+        bucket = bucketMock;
+      },
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock("@google-cloud/storage");
+    vi.resetModules();
+    if (originalInputPath === undefined) {
+      delete process.env.JOB_INPUT_FILES_PATH;
+    } else {
+      process.env.JOB_INPUT_FILES_PATH = originalInputPath;
+    }
+  });
+
+  it("downloads the object and decodes it as text", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    downloadMock.mockResolvedValue([Buffer.from("hello cloud", "utf8")]);
+
+    vi.resetModules();
+    const { readInputText: freshText } = await import("./files");
+    const result = await freshText("notes.txt");
+
+    expect(bucketMock).toHaveBeenCalledWith("my-bucket");
+    expect(fileMock).toHaveBeenCalledWith("inputs/notes.txt");
+    expect(result).toBe("hello cloud");
+  });
+
+  it("parses JSON downloaded from the configured bucket", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    downloadMock.mockResolvedValue([Buffer.from('{"count":7}', "utf8")]);
+
+    vi.resetModules();
+    const { readInputJson: freshJson } = await import("./files");
+    const result = await freshJson<{ count: number }>("report.json");
+
+    expect(fileMock).toHaveBeenCalledWith("inputs/report.json");
+    expect(result).toEqual({ count: 7 });
+  });
+
+  it("returns the raw buffer without decoding", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    const bytes = Buffer.from([0x00, 0xff, 0x10]);
+    downloadMock.mockResolvedValue([bytes]);
+
+    vi.resetModules();
+    const { readInputBuffer: freshBuffer } = await import("./files");
+    const result = await freshBuffer("blob.bin");
+
+    expect(result.equals(bytes)).toBe(true);
+  });
+
+  it("handles bucket-only URIs (no prefix)", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket";
+    downloadMock.mockResolvedValue([Buffer.from("x", "utf8")]);
+
+    vi.resetModules();
+    const { readInputText: freshText } = await import("./files");
+    await freshText("a.txt");
+
+    expect(fileMock).toHaveBeenCalledWith("a.txt");
+  });
+
+  it("rejects traversal before issuing the download", async () => {
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+
+    vi.resetModules();
+    const { readInputText: freshText } = await import("./files");
+    await expect(freshText("../secret.txt")).rejects.toThrow(
+      /must not traverse upward/,
+    );
+    expect(downloadMock).not.toHaveBeenCalled();
   });
 });

@@ -46,7 +46,7 @@ export default defineRunnerConfig({
 });
 ```
 
-`inputFilesPath` and `outputFilesPath` are both optional and independent — set the ones your jobs actually use via [`getInputFilesPath()` / `getFileWriter()` / `getOutputFilesPath()`](./files). Cloud environments require `gs://` URIs for these; attempting to deploy with a local path fails fast with a clear error.
+`inputFilesPath` and `outputFilesPath` are both optional and independent — set the ones your jobs actually use via the [File I/O helpers](./files) (`readInputJson` / `readInputText` / `readInputBuffer` / `getInputFilesPath` for reads, `getFileWriter` / `getOutputFilesPath` for writes). Cloud environments require `gs://` URIs for these; attempting to deploy with a local path fails fast with a clear error.
 
 ### 2. Add Build Entry for Jobs
 

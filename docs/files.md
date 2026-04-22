@@ -46,18 +46,19 @@ export default defineRunnerConfig({
 
 ## Reading Input Files
 
-Use `getInputFilesPath()` to get the resolved input destination and read with whatever API fits:
+Most jobs read JSON or plain text. Use `readInputJson()` / `readInputText()` / `readInputBuffer()` — they transparently handle local directories and `gs://` buckets, reject absolute paths and upward traversal, and throw the same "no input destination configured" error as the writer when nothing is set:
 
 ```typescript
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { defineJob, getInputFilesPath } from "gcp-job-runner";
+import { defineJob, readInputJson } from "gcp-job-runner";
+
+interface Airline {
+  iata: string;
+  name: string;
+}
 
 export default defineJob({
   handler: async () => {
-    const base = getInputFilesPath();
-    const raw = await readFile(path.join(base, "airlines.json"), "utf-8");
-    const airlines = JSON.parse(raw);
+    const airlines = await readInputJson<Airline[]>("airlines.json");
     // ...
   },
 });
@@ -77,17 +78,49 @@ export default defineRunnerConfig({
 });
 ```
 
-For `gs://` destinations, use `@google-cloud/storage` directly to fetch objects under the prefix — the library intentionally stays out of the read path so you can stream, list, and filter as your job needs.
+### Reader API
+
+```typescript
+function readInputText(relativePath: string): Promise<string>;
+function readInputJson<T = unknown>(relativePath: string): Promise<T>;
+function readInputBuffer(relativePath: string): Promise<Buffer>;
+```
+
+- `readInputText` returns the file contents decoded as UTF-8. Use for CSV, JSON, plain text, SVG — anything character-based.
+- `readInputJson` is a thin wrapper that parses the decoded text; parse errors on malformed input propagate as standard `SyntaxError`s from `JSON.parse`.
+- `readInputBuffer` returns the raw bytes — use for binary inputs (PNG, protobuf, etc.).
+
+For formats the library doesn't ship a helper for (e.g. CSV), read the text and feed it to your preferred parser:
+
+```typescript
+import { readInputText } from "gcp-job-runner";
+import Papa from "papaparse";
+
+const rows = Papa.parse(await readInputText("users.csv"), { header: true }).data;
+```
+
+### Streaming or Custom Access
+
+When the file is too large to buffer or you need a streaming API — `@google-cloud/storage` read streams, `createReadStream`, `readdir` of a subdirectory — fall back to `getInputFilesPath()` and pair it with `node:fs` or `@google-cloud/storage` directly:
+
+```typescript
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { getInputFilesPath } from "gcp-job-runner";
+
+const base = getInputFilesPath();
+const raw = await readFile(path.join(base, "airlines.json"), "utf-8");
+```
+
+The readers above cover the common case; `getInputFilesPath()` is the escape hatch.
 
 ### Picking Files Interactively
 
 Mark a schema field with `fileInput()` to turn it into a picker in `--interactive` mode. Interactive runs list the files under the configured `inputFilesPath` (local `readdir` or `gs://` bucket list) and present them as a select prompt instead of asking for a free-text path:
 
 ```typescript
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
-import { defineJob, fileInput, getInputFilesPath } from "gcp-job-runner";
+import { defineJob, fileInput, readInputText } from "gcp-job-runner";
 
 export default defineJob({
   description: "Process a CSV from the input directory",
@@ -95,8 +128,7 @@ export default defineJob({
     file: fileInput().describe("CSV to process"),
   }),
   handler: async ({ file }) => {
-    const base = getInputFilesPath();
-    const raw = await readFile(path.join(base, file), "utf-8");
+    const csv = await readInputText(file);
     // ...
   },
 });

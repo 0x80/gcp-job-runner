@@ -63,15 +63,16 @@ When browsing jobs:
 
 The prompts adapt to the schema field types:
 
-| Field Type | Prompt Type                         |
-| ---------- | ----------------------------------- |
-| `string`   | Text input                          |
-| `number`   | Text input (parsed as number)       |
-| `boolean`  | Yes/No confirmation                 |
-| `enum`     | Select from allowed values          |
-| `array`    | Text input (comma-separated values) |
+| Field Type      | Prompt Type                                             |
+| --------------- | ------------------------------------------------------- |
+| `string`        | Text input                                              |
+| `number`        | Text input (parsed as number)                           |
+| `boolean`       | Yes/No confirmation                                     |
+| `enum`          | Select from allowed values                              |
+| `array`         | Text input (comma-separated values)                     |
+| `fileInput()`   | Select from files in the configured `inputFilesPath`    |
 
-Optional fields can be skipped by pressing Enter without a value. Default values are shown and pre-filled when available.
+Optional fields can be skipped by pressing Enter without a value. Default values are shown and pre-filled when available. Fields marked with `fileInput()` (see [File I/O](./files)) offer a select prompt of the files found under the configured input destination; if the directory is empty or unconfigured, the prompt falls back to free-text entry.
 
 ### Cloud Interactive Mode
 
