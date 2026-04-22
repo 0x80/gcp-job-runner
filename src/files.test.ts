@@ -425,7 +425,7 @@ describe("listInputFiles (gcs)", () => {
     const result = await freshList();
 
     expect(bucketMock).toHaveBeenCalledWith("my-bucket");
-    expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs" });
+    expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs/" });
     expect(result).toEqual(["a.txt", "b.txt", "sub/nested.txt"]);
   });
 
@@ -452,5 +452,22 @@ describe("listInputFiles (gcs)", () => {
     const result = await freshList();
 
     expect(result).toEqual(["a.txt"]);
+  });
+
+  it("passes a delimiter-terminated prefix so sibling folders are excluded", async () => {
+    /**
+     * Regression guard: `inputs` without trailing `/` would also match
+     * sibling keys like `inputs-backup/…`. The terminated prefix makes
+     * GCS scope the list to the intended folder only.
+     */
+    process.env.JOB_INPUT_FILES_PATH = "gs://my-bucket/inputs";
+    getFilesMock.mockResolvedValue([[{ name: "inputs/real.txt" }]]);
+
+    vi.resetModules();
+    const { listInputFiles: freshList } = await import("./files");
+    const result = await freshList();
+
+    expect(getFilesMock).toHaveBeenCalledWith({ prefix: "inputs/" });
+    expect(result).toEqual(["real.txt"]);
   });
 });

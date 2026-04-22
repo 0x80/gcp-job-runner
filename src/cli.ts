@@ -503,12 +503,28 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
      * while collecting arg values. The container itself gets the env
      * var from the deploy path — this assignment is only for the
      * locally-running prompt.
+     *
+     * Explicitly clear the var when the env doesn't define
+     * `inputFilesPath` so a stale value from the user's shell can't
+     * leak in, and restore the original value once the prompt returns
+     * to keep the process environment unchanged for later steps.
      */
-    if (envConfig.inputFilesPath) {
-      process.env.JOB_INPUT_FILES_PATH = envConfig.inputFilesPath;
+    const previousInputFilesPath = process.env.JOB_INPUT_FILES_PATH;
+    try {
+      if (envConfig.inputFilesPath) {
+        process.env.JOB_INPUT_FILES_PATH = envConfig.inputFilesPath;
+      } else {
+        delete process.env.JOB_INPUT_FILES_PATH;
+      }
+      const result = await resolveInteractiveJob(jobsDirectory);
+      jobArgv = result.jobArgv;
+    } finally {
+      if (previousInputFilesPath === undefined) {
+        delete process.env.JOB_INPUT_FILES_PATH;
+      } else {
+        process.env.JOB_INPUT_FILES_PATH = previousInputFilesPath;
+      }
     }
-    const result = await resolveInteractiveJob(jobsDirectory);
-    jobArgv = result.jobArgv;
   } else {
     if (!jobNameFromArgs) {
       consola.error(

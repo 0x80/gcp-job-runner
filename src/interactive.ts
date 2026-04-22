@@ -319,7 +319,16 @@ async function promptForFileInput(
     return { handled: false };
   }
 
-  const SKIP = "__skip__";
+  /**
+   * Pick a sentinel that can't collide with a real filename in the
+   * listing — `__skip__.csv` is an unlikely but legal filename, so we
+   * extend with `_N` suffixes until the candidate is unique.
+   */
+  const existing = new Set(files);
+  let SKIP = "__skip__";
+  for (let n = 1; existing.has(SKIP); n += 1) {
+    SKIP = `__skip_${n}__`;
+  }
   const options = files.map((name) => ({ label: name, value: name }));
   if (info.isOptional) {
     options.unshift({ label: "(skip)", value: SKIP });

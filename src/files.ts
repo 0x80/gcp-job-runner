@@ -121,18 +121,19 @@ async function listLocalFiles(basePath: string): Promise<string[]> {
 
 async function listGcsFiles(uri: string): Promise<string[]> {
   const { bucket, prefix } = parseGcsUri(uri);
-  const storage = await getStorageClient();
-  const [files] = await storage.bucket(bucket).getFiles({
-    prefix: prefix || undefined,
-  });
 
   /**
-   * `file.name` is a full object key including the prefix. Strip the
-   * prefix (plus the separator) so callers receive a name relative to
-   * the configured destination, mirroring how the writer addresses
-   * objects.
+   * Terminate the list prefix with `/` so GCS treats it as a folder and
+   * not a bare substring — otherwise a configured `inputs` would also
+   * match sibling keys like `inputs2/…` or `inputs-backup/…`.
    */
-  const stripLen = prefix ? prefix.length + 1 : 0;
+  const listPrefix = prefix ? `${prefix}/` : undefined;
+  const stripLen = listPrefix ? listPrefix.length : 0;
+
+  const storage = await getStorageClient();
+  const [files] = await storage.bucket(bucket).getFiles({
+    prefix: listPrefix,
+  });
 
   return files
     .map((file) => file.name.slice(stripLen))
