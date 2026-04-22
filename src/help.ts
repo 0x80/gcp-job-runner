@@ -21,6 +21,12 @@ export interface FieldInfo {
   isOptional: boolean;
   defaultValue?: unknown;
   enumValues?: string[];
+  /**
+   * Custom role assigned via `.meta({ kind: ... })` on the Zod schema.
+   * Used by interactive mode to switch prompt strategies — e.g. `"file"`
+   * triggers the input-files picker instead of a free-text prompt.
+   */
+  kind?: "file";
 }
 
 /** Schema type with description property */
@@ -184,6 +190,18 @@ export function extractFieldInfo(schema: ZodType): FieldInfo {
   /** Get description */
   const originalSchema = schema as ZodTypeWithDescription;
   info.description = originalSchema.description ?? current.description;
+
+  /**
+   * Read Zod 4 `.meta()` metadata from the unwrapped inner schema so
+   * `fileInput().optional()` / `.default()` still surface `kind: "file"`.
+   */
+  const meta = (current as ZodType).meta();
+  if (meta && typeof meta === "object") {
+    const kind = (meta as { kind?: unknown }).kind;
+    if (kind === "file") {
+      info.kind = "file";
+    }
+  }
 
   /** Get type name */
   const typeName = getType(def);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { fileInput } from "./files";
 import {
+  extractFieldInfo,
   formatZodError,
   generateFullHelp,
   generateSchemaHelp,
@@ -151,5 +153,43 @@ describe("generateFullHelp", () => {
     expect(help).toContain("Examples:");
     expect(help).toContain("  pnpm cli:stag api/search --from AMS");
     expect(help).toContain("  pnpm cli:stag api/search --from AMS --to LHR");
+  });
+});
+
+describe("extractFieldInfo for fileInput()", () => {
+  it("marks a bare fileInput() field with kind: 'file'", () => {
+    const info = extractFieldInfo(fileInput());
+    expect(info.typeName).toBe("string");
+    expect(info.kind).toBe("file");
+    expect(info.isOptional).toBe(false);
+  });
+
+  it("preserves kind through .describe()", () => {
+    const info = extractFieldInfo(fileInput().describe("CSV to process"));
+    expect(info.kind).toBe("file");
+    expect(info.description).toBe("CSV to process");
+  });
+
+  it("preserves kind through .optional()", () => {
+    const info = extractFieldInfo(fileInput().optional());
+    expect(info.kind).toBe("file");
+    expect(info.isOptional).toBe(true);
+  });
+
+  it("preserves kind through .default()", () => {
+    const info = extractFieldInfo(fileInput().default("input.csv"));
+    expect(info.kind).toBe("file");
+    expect(info.isOptional).toBe(true);
+    expect(info.defaultValue).toBe("input.csv");
+  });
+
+  it("does not set kind for a plain string field", () => {
+    const info = extractFieldInfo(z.string());
+    expect(info.kind).toBeUndefined();
+  });
+
+  it("ignores meta without a recognized kind", () => {
+    const info = extractFieldInfo(z.string().meta({ kind: "something" }));
+    expect(info.kind).toBeUndefined();
   });
 });

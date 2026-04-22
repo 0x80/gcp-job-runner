@@ -497,6 +497,16 @@ async function handleCloudRun(options: CloudRunOptions): Promise<void> {
   let jobArgv: string[];
 
   if (isInteractive) {
+    /**
+     * Surface the env's `inputFilesPath` to the interactive picker so
+     * `listInputFiles()` can enumerate the configured (gs://) bucket
+     * while collecting arg values. The container itself gets the env
+     * var from the deploy path — this assignment is only for the
+     * locally-running prompt.
+     */
+    if (envConfig.inputFilesPath) {
+      process.env.JOB_INPUT_FILES_PATH = envConfig.inputFilesPath;
+    }
     const result = await resolveInteractiveJob(jobsDirectory);
     jobArgv = result.jobArgv;
   } else {

@@ -2,6 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { consola } from "consola";
 import type { ZodObject, ZodRawShape, ZodType } from "zod";
+import { listInputFiles } from "./files";
 import { extractFieldInfo, type FieldInfo, toKebabCase } from "./help";
 
 /**
@@ -147,6 +148,13 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
     ? `${optionalPrefix}--${flagName} · ${info.description}${defaultSuffix}`
     : `${optionalPrefix}--${flagName}${defaultSuffix}`;
 
+  /** Handle file-input fields with a picker over the configured inputFilesPath */
+  if (info.kind === "file") {
+    const picked = await promptForFileInput(message, info);
+    if (picked.handled) return picked.value;
+    /** Fall through to the default text prompt when the picker can't run. */
+  }
+
   /** Handle enum type with select prompt */
   if (
     info.typeName === "enum" &&
@@ -279,4 +287,56 @@ async function promptForField(key: string, info: FieldInfo): Promise<unknown> {
 
     return result;
   }
+}
+
+/**
+ * Picker result. `handled: true` means the user interacted with the
+ * picker (selected a file or skipped an optional field) and `value` is
+ * the final answer. `handled: false` means the picker couldn't run
+ * (no configured destination, empty directory, listing failure) — the
+ * caller should fall through to a free-text prompt.
+ */
+type FilePickerResult =
+  | { handled: true; value: string | undefined }
+  | { handled: false };
+
+async function promptForFileInput(
+  message: string,
+  info: FieldInfo,
+): Promise<FilePickerResult> {
+  let files: string[];
+  try {
+    files = await listInputFiles();
+  } catch (error) {
+    consola.warn(
+      `Couldn't list input files: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return { handled: false };
+  }
+
+  if (files.length === 0) {
+    consola.warn("No files found at the configured inputFilesPath");
+    return { handled: false };
+  }
+
+  const SKIP = "__skip__";
+  const options = files.map((name) => ({ label: name, value: name }));
+  if (info.isOptional) {
+    options.unshift({ label: "(skip)", value: SKIP });
+  }
+
+  const result = await consola.prompt(message, {
+    type: "select",
+    options,
+    initial:
+      typeof info.defaultValue === "string" ? info.defaultValue : undefined,
+    cancel: "symbol",
+  });
+
+  if (typeof result === "symbol") {
+    consola.info("Cancelled");
+    process.exit(0);
+  }
+
+  return { handled: true, value: result === SKIP ? undefined : result };
 }
