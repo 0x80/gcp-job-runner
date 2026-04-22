@@ -7,6 +7,9 @@ export {
   getInputFilesPath,
   getOutputFilesPath,
   listInputFiles,
+  readInputBuffer,
+  readInputJson,
+  readInputText,
 } from "./files";
 export type { FileWriter } from "./files";
 export {

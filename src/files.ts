@@ -1,4 +1,4 @@
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { consola } from "consola";
 import { z } from "zod";
@@ -109,6 +109,71 @@ export async function listInputFiles(): Promise<string[]> {
     return listGcsFiles(destination);
   }
   return listLocalFiles(path.resolve(destination));
+}
+
+/**
+ * Read a file from the configured input files destination as raw bytes.
+ * Local paths and `gs://` URIs are handled transparently.
+ *
+ * `relativePath` is sanitized the same way the writer sanitizes output
+ * paths — absolute paths and upward traversal (`..`) are rejected so a
+ * job can't escape its configured destination.
+ *
+ * Throws when no input destination is configured.
+ */
+export async function readInputBuffer(relativePath: string): Promise<Buffer> {
+  return readInputRaw(relativePath);
+}
+
+/**
+ * Read a UTF-8 text file from the configured input files destination.
+ * Use this for CSV, JSON, plain text, SVG — anything character-based.
+ *
+ * See `readInputBuffer()` for path-sanitization and configuration
+ * semantics.
+ */
+export async function readInputText(relativePath: string): Promise<string> {
+  const buffer = await readInputRaw(relativePath);
+  return buffer.toString("utf8");
+}
+
+/**
+ * Read and `JSON.parse` a file from the configured input files
+ * destination. Parse errors from a malformed file propagate as the
+ * standard `SyntaxError` thrown by `JSON.parse`.
+ *
+ * See `readInputBuffer()` for path-sanitization and configuration
+ * semantics.
+ */
+export async function readInputJson<T = unknown>(
+  relativePath: string,
+): Promise<T> {
+  const text = await readInputText(relativePath);
+  return JSON.parse(text) as T;
+}
+
+async function readInputRaw(relativePath: string): Promise<Buffer> {
+  const destination = readInputDestination();
+  const safeRelative = sanitizeRelativePath(relativePath);
+
+  if (destination.startsWith(GCS_PREFIX)) {
+    return readGcsObject(destination, safeRelative);
+  }
+
+  return readFile(path.join(path.resolve(destination), safeRelative));
+}
+
+async function readGcsObject(
+  uri: string,
+  safeRelative: string,
+): Promise<Buffer> {
+  const { bucket, prefix } = parseGcsUri(uri);
+  const storage = await getStorageClient();
+  const [buf] = await storage
+    .bucket(bucket)
+    .file(joinGcsPath(prefix, safeRelative))
+    .download();
+  return buf;
 }
 
 async function listLocalFiles(basePath: string): Promise<string[]> {
